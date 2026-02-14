@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>勤務管理カレンダー v1.19 (トグル同期修正版)</title>
+    <title>勤務管理カレンダー v1.20 (祝日表示修正版)</title>
     <style>
         /* --- Google Fonts (Noto Sans JP) --- */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
@@ -85,25 +85,34 @@
         .validation-area { padding: 8px 24px; background-color: #fafafa; border-top: 1px solid #eee; display: flex; flex-direction: column; gap: 4px; }
         .error-message { color: var(--status-error-text); background-color: var(--status-error-bg); padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; }
 
-        /* カレンダー */
+        /* カレンダー本体 */
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding: 16px; }
         .weekday { text-align: center; font-size: 0.8rem; color: var(--text-sub); margin-bottom: 8px; }
-        .day-cell { aspect-ratio: 1/1; border-radius: 8px; background-color: #f9f9f9; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 4px; cursor: pointer; position: relative; font-weight: 500; overflow: hidden; }
-        .day-cell.is-sat { color: #8ec5fc; }
-        .day-cell.is-sun, .day-cell.is-holiday { color: #d32f2f; }
+        .day-cell { aspect-ratio: 1/1; border-radius: 8px; background-color: #f9f9f9; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 4px 2px; cursor: pointer; position: relative; font-weight: 500; overflow: hidden; }
         
+        /* 祝日・日曜日の赤色を最優先する設定 */
+        .day-cell.is-sun, .day-cell.is-holiday { color: #d32f2f !important; }
+        .day-cell.is-sat { color: #1565c0; }
+        
+        /* ステータス背景色設定 (color: #fff の影響を祝日には与えない) */
         .day-cell.status-work { background-color: var(--primary-work); color: #fff; }
         .day-cell.status-leave { background-color: var(--accent-leave); color: #fff; }
         .day-cell.status-off { background-color: var(--accent-off); color: #fff; }
         .day-cell.status-public-off { background-color: var(--accent-public-off); color: #fff; }
+        
+        /* 祝日の日のテキストは背景色があっても赤色を死守 */
+        .day-cell.is-holiday, .day-cell.is-sun { font-weight: 700; }
+        
         .day-cell.is-today { border: 2px solid var(--text-sub); }
 
-        .nobori-mark { margin-left: 2px; font-size: 0.8rem; color: #4a4a4a; }
-        .day-cell[class*="status-"] .nobori-mark { color: #fff; }
-        .day-cell.is-holiday .nobori-mark { color: inherit; }
+        /* 特殊マークとラベル */
+        .nobori-mark { margin-left: 2px; font-size: 0.8rem; color: #4a4a4a; font-weight: normal; }
+        .day-cell[class*="status-"] .nobori-mark { color: #fff; } /* 背景ありの時は白に */
+        .day-cell.is-holiday .nobori-mark, .day-cell.is-sun .nobori-mark { color: #d32f2f; }
 
-        .status-label { font-size: 0.75rem; font-weight: 700; margin-top: 1px; }
-        .note-text { font-size: 0.6rem; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; }
+        .holiday-name { font-size: 0.5rem; line-height: 1; margin-top: 1px; text-align: center; color: #d32f2f; font-weight: 400; }
+        .status-label { font-size: 0.7rem; font-weight: 700; margin-top: 1px; }
+        .note-text { font-size: 0.55rem; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 95%; font-weight: 400; opacity: 0.9; }
 
         /* モーダル */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
@@ -146,11 +155,9 @@
 
     <div id="copyStatusMsg">コピーしました</div>
 
-    <!-- モーダル -->
     <div class="modal-overlay" id="memoModal">
         <div class="modal-content"><div id="modalTitle"></div><input type="text" id="memoInput" class="modal-input"><div style="display:flex;justify-content:flex-end;gap:8px;"><button class="modal-btn" onclick="document.getElementById('memoModal').classList.remove('active')">キャンセル</button><button class="modal-btn save" id="memoSaveBtn">保存</button></div></div>
     </div>
-    <!-- 確認用モーダル -->
     <div class="modal-overlay" id="confirmModal">
         <div class="modal-content"><h3>確認</h3><div id="confirmMessage" style="margin-bottom:15px"></div><div style="display:flex;justify-content:flex-end;gap:8px;"><button class="modal-btn" onclick="document.getElementById('confirmModal').classList.remove('active')">やめる</button><button class="modal-btn" style="background:#d32f2f;color:#fff" id="confirmOkBtn">実行</button></div></div>
     </div>
@@ -160,9 +167,9 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-        // Firebase設定 (ユーザー提供の正しいキーを適用)
+        // Firebase設定 (小文字のlを含む正しいキーを適用)
         const firebaseConfig = {
-            apiKey: "AIzaSyDQ3fJpKeoQ6-mjsQGni8YlI8NH-Dp-JE0", // 小文字のl(エル)
+            apiKey: "AIzaSyDQ3fJpKeoQ6-mjsQGni8YlI8NH-Dp-JE0",
             authDomain: "ka-shift-calendar.firebaseapp.com",
             projectId: "ka-shift-calendar",
             storageBucket: "ka-shift-calendar.firebasestorage.app",
@@ -218,9 +225,7 @@
             document.getElementById('syncStatus').className = "sync-status active";
             
             unsubscribeDoc = onSnapshot(docRef, (snap) => {
-                // フリッカー防止: 自分の書き込みが反映される前の古いデータを無視する
                 if (snap.metadata.hasPendingWrites) return;
-
                 if (snap.exists()) {
                     const data = snap.data();
                     state.attendance = data.attendance || {}; 
@@ -229,7 +234,7 @@
                     state.markers = data.markers || {};
                     render();
                     document.getElementById('syncStatus').className = 'sync-status saved';
-                    document.getElementById('syncStatus').textContent = '同期完了';
+                    document.getElementById('syncStatus').textContent = '同期中';
                     document.getElementById('debugError').style.display = 'none';
                 } else { 
                     save(true); 
@@ -260,7 +265,6 @@
             
             if (saveTimeout) clearTimeout(saveTimeout);
             const doSave = () => {
-                // merge:trueを外すことで、キーの削除（解除）が確実にサーバーへ反映されるようにする
                 setDoc(docRef, data).catch(err => showError("保存エラー"));
             };
             if (immediate) doSave(); else saveTimeout = setTimeout(doSave, 800);
@@ -275,7 +279,7 @@
                     let name = null;
                     if(m===1&&date===1)name="元日";else if(m===2&&date===11)name="建国";else if(m===2&&date===23)name="天皇";
                     else if(m===4&&date===29)name="昭和";else if(m===5&&date===3)name="憲法";else if(m===5&&date===4)name="緑";
-                    else if(m===5&&date===5)name="子供";else if(m===8&&date(11))name="山";else if(m===11&&date===3)name="文化";else if(m===11&&date===23)name="勤労";
+                    else if(m===5&&date===5)name="子供";else if(m===8&&date===11)name="山";else if(m===11&&date===3)name="文化";else if(m===11&&date===23)name="勤労";
                     else if(w===1){if(m===1&&nth===2)name="成人";if(m===7&&nth===3)name="海";if(m===9&&nth===3)name="敬老";if(m===10&&nth===2)name="スポーツ";}
                     if(m===3&&date===this.getEquinox(y,'v'))name="春分";if(m===9&&date===this.getEquinox(y,'a'))name="秋分";
                     if(name) h[formatDateKey(d)] = name; d.setDate(d.getDate()+1);
@@ -299,30 +303,51 @@
             while (loop <= end) {
                 counts.t++; const k = formatDateKey(loop), s = state.attendance[k], hol = holMap[k], n = state.notes[k], m = state.markers[k];
                 const cell = document.createElement('div'); cell.className = 'day-cell';
-                const dWrap = document.createElement('span'); dWrap.textContent = loop.getDate();
                 
+                // 日付の数字部分
+                const dWrap = document.createElement('div'); dWrap.style.display = "flex"; dWrap.style.alignItems = "center";
+                const dNum = document.createElement('span'); dNum.textContent = loop.getDate();
+                dWrap.appendChild(dNum);
+                
+                // ●マークの表示
                 if (m) { const sp=document.createElement('span'); sp.className='nobori-mark'; sp.textContent='●'; dWrap.appendChild(sp); }
                 cell.appendChild(dWrap);
                 
+                // 祝日・曜日のクラス設定
+                if (hol) cell.classList.add('is-holiday'); 
+                else if (loop.getDay()===0) cell.classList.add('is-sun'); 
+                else if (loop.getDay()===6) cell.classList.add('is-sat');
+
+                // 祝日名の表示
+                if (hol) {
+                    const hName = document.createElement('span');
+                    hName.className = 'holiday-name';
+                    hName.textContent = hol;
+                    cell.appendChild(hName);
+                }
+
+                // 「有休」ラベル表示
                 if (s==='leave') { const l=document.createElement('span'); l.className='status-label'; l.textContent='有休'; cell.appendChild(l); }
-                if (n) { const ns=document.createElement('span'); ns.className='note-text'; ns.textContent=n; cell.appendChild(ns); }
-                if (hol) cell.classList.add('is-holiday'); else if (loop.getDay()===0) cell.classList.add('is-sun'); else if (loop.getDay()===6) cell.classList.add('is-sat');
-                if (k === todayKey) cell.classList.add('is-today');
-                if (s==='work'){ cell.classList.add('status-work'); counts.w++; }
-                else if (s==='leave'){ cell.classList.add('status-leave'); counts.l++; }
-                else if (s==='off'){ cell.classList.add('status-off'); counts.o++; }
-                else if (s==='public_off'){ cell.classList.add('status-public-off'); counts.po++; }
                 
+                // メモ表示
+                if (n) { const ns=document.createElement('span'); ns.className='note-text'; ns.textContent=n; cell.appendChild(ns); }
+                
+                if (k === todayKey) cell.classList.add('is-today');
+                
+                // ステータス背景適用
+                if (s==='work') counts.w++, cell.classList.add('status-work');
+                else if (s==='leave') counts.l++, cell.classList.add('status-leave');
+                else if (s==='off') counts.o++, cell.classList.add('status-off');
+                else if (s==='public_off') counts.po++, cell.classList.add('status-public-off');
+                
+                // タップ時の完全トグル動作 (設定 ⇔ 解除)
                 cell.onclick = () => { 
                     if (state.selectedMode === 'nobori') {
                         if (state.markers[k]) delete state.markers[k];
                         else state.markers[k] = true;
                     } else if (state.selectedMode) {
-                        if (state.attendance[k] === state.selectedMode) {
-                            delete state.attendance[k];
-                        } else {
-                            state.attendance[k] = state.selectedMode;
-                        }
+                        if (state.attendance[k] === state.selectedMode) delete state.attendance[k];
+                        else state.attendance[k] = state.selectedMode;
                     } else {
                         const cycle = [null, 'work', 'leave', 'off', 'public_off'];
                         const curIdx = cycle.indexOf(state.attendance[k] || null);
@@ -330,8 +355,7 @@
                         if (nextStatus) state.attendance[k] = nextStatus;
                         else delete state.attendance[k];
                     }
-                    save(); 
-                    render(); 
+                    save(); render(); 
                 };
                 cell.ondblclick = () => { currentMemoKey=k; document.getElementById('modalTitle').textContent=k+' メモ'; document.getElementById('memoInput').value=state.notes[k]||''; document.getElementById('memoModal').classList.add('active'); };
                 grid.appendChild(cell); loop.setDate(loop.getDate()+1);
@@ -340,7 +364,6 @@
             const v = document.getElementById('statusMessageContainer'); v.innerHTML = ''; document.getElementById('totalDaysDisplay').textContent = `全体: ${counts.t}日`;
             const fill = counts.w+counts.l+counts.o+counts.po; if (fill!==counts.t) { const d=document.createElement('div'); d.className='error-message'; d.textContent=`未入力が ${counts.t-fill}日 あります。`; v.appendChild(d); }
             const req = parseInt(state.requiredDays[pk]||0); if(req>0){ const act=counts.w+counts.l; if(act<req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`不足: ${req-act}日`; v.appendChild(d); }else if(act>req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`超過: ${act-req}日`; v.appendChild(d); } }
-            
             document.querySelectorAll('.stat-item[data-mode]').forEach(el => el.classList.toggle('active-mode', el.dataset.mode===state.selectedMode));
             document.getElementById('noboriBtn').classList.toggle('active-tool', state.selectedMode==='nobori');
         }
@@ -357,14 +380,11 @@
             let t=`【${e.getMonth()+1}月度 有休】\n`, c=0, l=new Date(s); 
             while(l<=e){ 
                 const k=formatDateKey(l); 
-                if(state.attendance[k]==='leave'){ 
-                    c++; t+=`${l.getDate()}(${w[l.getDay()]}): 有休${state.notes[k]?' ('+state.notes[k]+')':''}\n`; 
-                } 
+                if(state.attendance[k]==='leave'){ c++; t+=`${l.getDate()}(${w[l.getDay()]}): 有休${state.notes[k]?' ('+state.notes[k]+')':''}\n`; } 
                 l.setDate(l.getDate()+1); 
             } 
             t+=(c===0)?"なし":`合計: ${c}日`; 
-            const dummy = document.createElement("textarea");
-            document.body.appendChild(dummy);
+            const dummy = document.createElement("textarea"); document.body.appendChild(dummy);
             dummy.value = t; dummy.select(); document.execCommand("copy"); document.body.removeChild(dummy);
             const msg = document.getElementById('copyStatusMsg'); msg.style.display = 'block'; setTimeout(() => { msg.style.display = 'none'; }, 2000);
         };
