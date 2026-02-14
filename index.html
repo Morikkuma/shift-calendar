@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>勤務管理カレンダー v1.11</title>
+    <title>勤務管理カレンダー v1.12 (修正版)</title>
     <style>
         /* --- Google Fonts (Noto Sans JP) --- */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
@@ -46,15 +46,18 @@
             display: flex; flex-direction: column; position: relative;
         }
 
+        /* 同期セクション */
         .cloud-section { padding: 12px 24px; background-color: #f8f9fa; border-bottom: 1px solid #eee; display: flex; flex-direction: column; gap: 8px; }
         .cloud-header { font-size: 0.85rem; font-weight: 700; color: var(--text-sub); display: flex; justify-content: space-between; align-items: center; }
         .cloud-controls { display: flex; gap: 8px; }
         .cloud-input { flex: 1; padding: 6px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; }
         .cloud-btn { padding: 6px 12px; background-color: var(--text-sub); color: white; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
         .cloud-btn.primary { background-color: var(--primary-work-dark); }
+        
         .sync-status { font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; background-color: #eee; color: #666; display: inline-flex; align-items: center; gap: 4px; }
         .sync-status.active { background-color: var(--status-sync-bg); color: var(--status-sync-text); }
         .sync-status.saved { background-color: var(--status-ok-bg); color: var(--status-ok-text); }
+        .sync-status.error { background-color: var(--status-error-bg); color: var(--status-error-text); }
 
         .toolbar { display: flex; gap: 8px; padding: 8px 24px; background-color: #fff; border-bottom: 1px solid #eee; overflow-x: auto; }
         .tool-btn { flex: 1; white-space: nowrap; padding: 8px 12px; border: 1px solid #eee; border-radius: 6px; background-color: #fff; font-size: 0.85rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
@@ -94,6 +97,7 @@
         .status-label { font-size: 0.75rem; font-weight: 700; margin-top: 1px; }
         .note-text { font-size: 0.6rem; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; }
 
+        /* モーダル */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
         .modal-overlay.active { display: flex; }
         .modal-content { background: #fff; padding: 24px; border-radius: 12px; width: 80%; max-width: 320px; }
@@ -105,8 +109,15 @@
 <body>
     <div class="app-container">
         <div class="cloud-section">
-            <div class="cloud-header"><span>☁️ データ同期設定</span><span id="syncStatus" class="sync-status">オフライン</span></div>
-            <div class="cloud-controls"><input type="text" id="shareIdInput" class="cloud-input" placeholder="共有ID (例: my-shop-01)"><button id="connectBtn" class="cloud-btn primary">同期開始</button></div>
+            <div class="cloud-header">
+                <span>☁️ データ同期設定</span>
+                <span id="syncStatus" class="sync-status">オフライン</span>
+            </div>
+            <div class="cloud-controls">
+                <input type="text" id="shareIdInput" class="cloud-input" placeholder="共有ID (例: my-shop-01)">
+                <button id="connectBtn" class="cloud-btn primary">同期開始</button>
+            </div>
+            <div id="debugError" style="font-size: 10px; color: red; margin-top: 4px; display: none;"></div>
         </div>
         <div class="toolbar">
             <button class="tool-btn" id="batchWorkBtn">⚡️ 平日を出勤にする</button>
@@ -115,7 +126,10 @@
         </div>
         <div class="header">
             <button class="nav-btn" id="prevBtn">❮</button>
-            <div class="title-group"><div class="period-label" id="periodLabel"></div><h2 class="month-title" id="currentPeriodDisplay">読み込み中...</h2></div>
+            <div class="title-group">
+                <div class="period-label" id="periodLabel"></div>
+                <h2 class="month-title" id="currentPeriodDisplay">読み込み中...</h2>
+            </div>
             <button class="nav-btn" id="nextBtn">❯</button>
         </div>
         <div class="stats-bar">
@@ -130,7 +144,7 @@
     </div>
 
     <div class="modal-overlay" id="memoModal">
-        <div class="modal-content"><div id="modalTitle"></div><input type="text" id="memoInput" class="modal-input"><div style="display:flex;justify-content:flex-end;gap:8px;"><button class="modal-btn" onclick="document.getElementById('memoModal').classList.remove('active')">消す</button><button class="modal-btn save" id="memoSaveBtn">保存</button></div></div>
+        <div class="modal-content"><div id="modalTitle"></div><input type="text" id="memoInput" class="modal-input"><div style="display:flex;justify-content:flex-end;gap:8px;"><button class="modal-btn" onclick="document.getElementById('memoModal').classList.remove('active')">キャンセル</button><button class="modal-btn save" id="memoSaveBtn">保存</button></div></div>
     </div>
     <div class="modal-overlay" id="confirmModal">
         <div class="modal-content"><h3>確認</h3><div id="confirmMessage" style="margin-bottom:15px"></div><div style="display:flex;justify-content:flex-end;gap:8px;"><button class="modal-btn" onclick="document.getElementById('confirmModal').classList.remove('active')">やめる</button><button class="modal-btn" style="background:#d32f2f;color:#fff" id="confirmOkBtn">実行</button></div></div>
@@ -141,10 +155,8 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-        // =========================================================
-        // 【重要】お送りいただいた Firebase の設定コードを貼り付け済みです
-        // =========================================================
-        const myFirebaseConfig = {
+        // Firebase Config (お送りいただいたものを使用)
+        const firebaseConfig = {
             apiKey: "AIzaSyDQ3fJpKeoQ6-mjsQGni8YLI8NH-Dp-JE0",
             authDomain: "ka-shift-calendar.firebaseapp.com",
             projectId: "ka-shift-calendar",
@@ -154,9 +166,7 @@
             measurementId: "G-45CWYB75NE"
         };
 
-        const envConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const firebaseConfig = (myFirebaseConfig.apiKey) ? myFirebaseConfig : (envConfig || {});
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'ka-shift-manager';
+        const appId = 'ka-shift-manager'; // このアプリ固有のID
         
         let db, auth, user, unsubscribeDoc = null, isCloudActive = false, saveTimeout = null, confirmCallback = null, currentMemoKey = null;
 
@@ -193,25 +203,62 @@
         function initDate() { const today = new Date(); if (today.getDate() <= 15) state.currentStartDate = new Date(today.getFullYear(), today.getMonth()-1, 16); else state.currentStartDate = new Date(today.getFullYear(), today.getMonth(), 16); }
 
         async function initFirebase() {
-            if (!firebaseConfig.apiKey) return;
-            const app = initializeApp(firebaseConfig); auth = getAuth(app); db = getFirestore(app);
-            await signInAnonymously(auth);
-            onAuthStateChanged(auth, (u) => { user = u; const sid = localStorage.getItem('lastShareId'); if (user && sid) { document.getElementById('shareIdInput').value = sid; connect(sid); } });
+            try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                await signInAnonymously(auth);
+                onAuthStateChanged(auth, (u) => {
+                    user = u;
+                    const sid = localStorage.getItem('lastShareId');
+                    if (user && sid) {
+                        document.getElementById('shareIdInput').value = sid;
+                        connect(sid);
+                    }
+                });
+            } catch (e) {
+                showError("Firebase初期化失敗: " + e.message);
+            }
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('debugError');
+            el.textContent = msg;
+            el.style.display = 'block';
+            document.getElementById('syncStatus').textContent = "エラー";
+            document.getElementById('syncStatus').className = "sync-status error";
         }
 
         function connect(sid) {
             if (!user || !db || !sid) return;
             if (unsubscribeDoc) unsubscribeDoc();
-            isCloudActive = true; localStorage.setItem('lastShareId', sid);
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', sid);
+            
+            isCloudActive = true;
+            localStorage.setItem('lastShareId', sid);
+            
+            // 修正箇所: 正しいデータパス構造への変更
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shifts', sid);
+            
+            document.getElementById('syncStatus').textContent = "同期中...";
+            document.getElementById('syncStatus').className = "sync-status active";
+
             unsubscribeDoc = onSnapshot(docRef, (snap) => {
                 if (snap.exists()) {
                     const data = snap.data();
-                    state.attendance = data.attendance || {}; state.requiredDays = data.requiredDays || {};
-                    state.notes = data.notes || {}; state.markers = data.markers || {};
-                    render(); document.getElementById('syncStatus').className = 'sync-status saved'; document.getElementById('syncStatus').textContent = '同期中';
-                } else save(true);
-            }, () => { document.getElementById('syncStatus').textContent = 'エラー: DB未作成?'; });
+                    state.attendance = data.attendance || {};
+                    state.requiredDays = data.requiredDays || {};
+                    state.notes = data.notes || {};
+                    state.markers = data.markers || {};
+                    render();
+                    document.getElementById('syncStatus').className = 'sync-status saved';
+                    document.getElementById('syncStatus').textContent = '同期中';
+                    document.getElementById('debugError').style.display = 'none';
+                } else {
+                    save(true); // 初めてのIDならデータを作成
+                }
+            }, (err) => {
+                showError("接続エラー: " + err.code + " (設定を確認してください)");
+            });
         }
 
         function save(immediate = false) {
@@ -219,12 +266,28 @@
             localStorage.setItem('requiredDaysData', JSON.stringify(state.requiredDays));
             localStorage.setItem('notesData', JSON.stringify(state.notes));
             localStorage.setItem('markersData', JSON.stringify(state.markers));
+            
             if (!isCloudActive || !user) return;
+            
             const sid = document.getElementById('shareIdInput').value;
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', sid);
-            const data = { attendance: state.attendance, requiredDays: state.requiredDays, notes: state.notes, markers: state.markers, updatedAt: new Date().toISOString() };
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shifts', sid);
+            
+            const data = { 
+                attendance: state.attendance, 
+                requiredDays: state.requiredDays, 
+                notes: state.notes, 
+                markers: state.markers, 
+                updatedAt: new Date().toISOString() 
+            };
+            
             if (saveTimeout) clearTimeout(saveTimeout);
-            if (immediate) setDoc(docRef, data, { merge: true }); else saveTimeout = setTimeout(() => setDoc(docRef, data, { merge: true }), 1000);
+            
+            const doSave = () => {
+                setDoc(docRef, data, { merge: true })
+                .catch(err => showError("保存エラー: " + err.message));
+            };
+
+            if (immediate) doSave(); else saveTimeout = setTimeout(doSave, 1000);
         }
 
         function render() {
@@ -252,7 +315,18 @@
                 else if (s==='leave'){ cell.classList.add('status-leave'); counts.l++; }
                 else if (s==='off'){ cell.classList.add('status-off'); counts.o++; }
                 else if (s==='public_off'){ cell.classList.add('status-public-off'); counts.po++; }
-                cell.onclick = () => { if(state.selectedMode==='nobori'){ if(state.markers[k]) delete state.markers[k]; else state.markers[k]=true; save(); render(); } else { const cur=state.attendance[k]; let next=null; if(state.selectedMode) next=(state.selectedMode===cur)?null:state.selectedMode; else {const cy=[null,'work','leave','off','public_off']; next=cy[(cy.indexOf(cur)+1)%5];} if(next) state.attendance[k]=next; else delete state.attendance[k]; save(); render(); } };
+                
+                cell.onclick = () => { 
+                    if(state.selectedMode==='nobori'){ 
+                        if(state.markers[k]) delete state.markers[k]; else state.markers[k]=true; save(); render(); 
+                    } else { 
+                        const cur=state.attendance[k]; let next=null; 
+                        if(state.selectedMode) next=(state.selectedMode===cur)?null:state.selectedMode; 
+                        else {const cy=[null,'work','leave','off','public_off']; next=cy[(cy.indexOf(cur)+1)%5];} 
+                        if(next) state.attendance[k]=next; else delete state.attendance[k]; 
+                        save(); render(); 
+                    } 
+                };
                 cell.ondblclick = () => { currentMemoKey=k; document.getElementById('modalTitle').textContent=k+' メモ'; document.getElementById('memoInput').value=state.notes[k]||''; document.getElementById('memoModal').classList.add('active'); };
                 grid.appendChild(cell); loop.setDate(loop.getDate()+1);
             }
