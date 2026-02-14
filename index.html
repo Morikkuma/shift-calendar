@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>勤務管理カレンダー v1.18</title>
+    <title>勤務管理カレンダー v1.19 (トグル同期修正版)</title>
     <style>
         /* --- Google Fonts (Noto Sans JP) --- */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
@@ -84,7 +84,6 @@
 
         .validation-area { padding: 8px 24px; background-color: #fafafa; border-top: 1px solid #eee; display: flex; flex-direction: column; gap: 4px; }
         .error-message { color: var(--status-error-text); background-color: var(--status-error-bg); padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; }
-        .status-msg-box { padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; display: none; margin-top: 4px; }
 
         /* カレンダー */
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding: 16px; }
@@ -147,7 +146,7 @@
 
     <div id="copyStatusMsg">コピーしました</div>
 
-    <!-- メモ用モーダル -->
+    <!-- モーダル -->
     <div class="modal-overlay" id="memoModal">
         <div class="modal-content"><div id="modalTitle"></div><input type="text" id="memoInput" class="modal-input"><div style="display:flex;justify-content:flex-end;gap:8px;"><button class="modal-btn" onclick="document.getElementById('memoModal').classList.remove('active')">キャンセル</button><button class="modal-btn save" id="memoSaveBtn">保存</button></div></div>
     </div>
@@ -161,9 +160,7 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-        // =========================================================
         // Firebase設定 (ユーザー提供の正しいキーを適用)
-        // =========================================================
         const firebaseConfig = {
             apiKey: "AIzaSyDQ3fJpKeoQ6-mjsQGni8YlI8NH-Dp-JE0", // 小文字のl(エル)
             authDomain: "ka-shift-calendar.firebaseapp.com",
@@ -194,8 +191,6 @@
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
-                
-                // Auth Rule 3: Auth before queries
                 await signInAnonymously(auth);
                 onAuthStateChanged(auth, (u) => {
                     user = u;
@@ -218,14 +213,14 @@
             if (!user || !db || !sid) return;
             if (unsubscribeDoc) unsubscribeDoc();
             isCloudActive = true; localStorage.setItem('lastShareId', sid);
-            
-            // Auth Rule 1: Strict paths
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shifts', sid);
-            
             document.getElementById('syncStatus').textContent = "接続中...";
             document.getElementById('syncStatus').className = "sync-status active";
             
             unsubscribeDoc = onSnapshot(docRef, (snap) => {
+                // フリッカー防止: 自分の書き込みが反映される前の古いデータを無視する
+                if (snap.metadata.hasPendingWrites) return;
+
                 if (snap.exists()) {
                     const data = snap.data();
                     state.attendance = data.attendance || {}; 
@@ -234,7 +229,7 @@
                     state.markers = data.markers || {};
                     render();
                     document.getElementById('syncStatus').className = 'sync-status saved';
-                    document.getElementById('syncStatus').textContent = '同期中';
+                    document.getElementById('syncStatus').textContent = '同期完了';
                     document.getElementById('debugError').style.display = 'none';
                 } else { 
                     save(true); 
@@ -264,8 +259,11 @@
             };
             
             if (saveTimeout) clearTimeout(saveTimeout);
-            const doSave = () => setDoc(docRef, data, { merge: true }).catch(err => showError("保存エラー"));
-            if (immediate) doSave(); else saveTimeout = setTimeout(doSave, 1000);
+            const doSave = () => {
+                // merge:trueを外すことで、キーの削除（解除）が確実にサーバーへ反映されるようにする
+                setDoc(docRef, data).catch(err => showError("保存エラー"));
+            };
+            if (immediate) doSave(); else saveTimeout = setTimeout(doSave, 800);
         }
 
         const Holidays = {
@@ -315,21 +313,17 @@
                 else if (s==='off'){ cell.classList.add('status-off'); counts.o++; }
                 else if (s==='public_off'){ cell.classList.add('status-public-off'); counts.po++; }
                 
-                // タップ時の完全トグル動作 (設定 ⇔ 解除)
                 cell.onclick = () => { 
                     if (state.selectedMode === 'nobori') {
-                        // のぼりトグル
                         if (state.markers[k]) delete state.markers[k];
                         else state.markers[k] = true;
                     } else if (state.selectedMode) {
-                        // ボタン選択時のトグル
                         if (state.attendance[k] === state.selectedMode) {
                             delete state.attendance[k];
                         } else {
                             state.attendance[k] = state.selectedMode;
                         }
                     } else {
-                        // モード未選択時のローテーション
                         const cycle = [null, 'work', 'leave', 'off', 'public_off'];
                         const curIdx = cycle.indexOf(state.attendance[k] || null);
                         const nextStatus = cycle[(curIdx + 1) % cycle.length];
@@ -351,7 +345,6 @@
             document.getElementById('noboriBtn').classList.toggle('active-tool', state.selectedMode==='nobori');
         }
 
-        // イベントリスナー
         document.getElementById('prevBtn').onclick = () => { state.currentStartDate.setMonth(state.currentStartDate.getMonth()-1); render(); };
         document.getElementById('nextBtn').onclick = () => { state.currentStartDate.setMonth(state.currentStartDate.getMonth()+1); render(); };
         document.getElementById('connectBtn').onclick = () => { const id = document.getElementById('shareIdInput').value; if(id) connect(id); };
@@ -359,7 +352,6 @@
         document.getElementById('batchWorkBtn').onclick = () => { document.getElementById('confirmMessage').textContent='平日をすべて出勤にしますか？'; document.getElementById('confirmModal').classList.add('active'); confirmCallback=()=>{ const s=new Date(state.currentStartDate), e=new Date(s.getFullYear(), s.getMonth()+1, 15), h=Holidays.getMap(s,e); let l=new Date(s); while(l<=e){ const k=formatDateKey(l); if(l.getDay()!==0&&l.getDay()!==6&&!h[k])state.attendance[k]='work'; l.setDate(l.getDate()+1); } save(); render(); }; };
         document.getElementById('confirmOkBtn').onclick = () => { if(confirmCallback)confirmCallback(); document.getElementById('confirmModal').classList.remove('active'); };
         
-        // コピー機能
         document.getElementById('copyTextBtn').onclick = () => { 
             const s=new Date(state.currentStartDate), e=new Date(s.getFullYear(), s.getMonth()+1, 15), w=['日','月','火','水','木','金','土']; 
             let t=`【${e.getMonth()+1}月度 有休】\n`, c=0, l=new Date(s); 
@@ -371,17 +363,10 @@
                 l.setDate(l.getDate()+1); 
             } 
             t+=(c===0)?"なし":`合計: ${c}日`; 
-            
             const dummy = document.createElement("textarea");
             document.body.appendChild(dummy);
-            dummy.value = t;
-            dummy.select();
-            document.execCommand("copy");
-            document.body.removeChild(dummy);
-            
-            const msg = document.getElementById('copyStatusMsg');
-            msg.style.display = 'block';
-            setTimeout(() => { msg.style.display = 'none'; }, 2000);
+            dummy.value = t; dummy.select(); document.execCommand("copy"); document.body.removeChild(dummy);
+            const msg = document.getElementById('copyStatusMsg'); msg.style.display = 'block'; setTimeout(() => { msg.style.display = 'none'; }, 2000);
         };
         
         document.getElementById('noboriBtn').onclick = () => { state.selectedMode = state.selectedMode==='nobori'?null:'nobori'; render(); };
