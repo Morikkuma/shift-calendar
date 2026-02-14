@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>勤務管理カレンダー v1.13 (完全版)</title>
+    <title>勤務管理カレンダー v1.14 (同期修正版)</title>
     <style>
         /* --- Google Fonts (Noto Sans JP) --- */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
@@ -129,6 +129,7 @@
         <div class="calendar-grid" id="calendarGrid"></div>
     </div>
 
+    <!-- モーダル -->
     <div class="modal-overlay" id="memoModal">
         <div class="modal-content"><div id="modalTitle"></div><input type="text" id="memoInput" class="modal-input"><div style="display:flex;justify-content:flex-end;gap:8px;"><button class="modal-btn" onclick="document.getElementById('memoModal').classList.remove('active')">キャンセル</button><button class="modal-btn save" id="memoSaveBtn">保存</button></div></div>
     </div>
@@ -141,9 +142,9 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-        // Firebase設定（Typo修正済み）
+        // Firebase設定（小文字のlに修正済み）
         const firebaseConfig = {
-            apiKey: "AIzaSyDQ3fJpKeoQ6-mjsQGni8YLI8NH-Dp-JE0", // Lは必ず大文字
+            apiKey: "AIzaSyDQ3fJpKeoQ6-mjsQGni8YlI8NH-Dp-JE0",
             authDomain: "ka-shift-calendar.firebaseapp.com",
             projectId: "ka-shift-calendar",
             storageBucket: "ka-shift-calendar.firebasestorage.app",
@@ -179,7 +180,7 @@
                     if (user && sid) { document.getElementById('shareIdInput').value = sid; connect(sid); }
                 });
             } catch (e) {
-                showError("Firebaseエラー: " + e.message);
+                showError("設定エラー: " + e.message);
             }
         }
 
@@ -195,7 +196,7 @@
             if (unsubscribeDoc) unsubscribeDoc();
             isCloudActive = true; localStorage.setItem('lastShareId', sid);
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shifts', sid);
-            document.getElementById('syncStatus').textContent = "同期中...";
+            document.getElementById('syncStatus').textContent = "接続中...";
             document.getElementById('syncStatus').className = "sync-status active";
             unsubscribeDoc = onSnapshot(docRef, (snap) => {
                 if (snap.exists()) {
@@ -207,7 +208,7 @@
                     document.getElementById('syncStatus').textContent = '同期完了';
                     document.getElementById('debugError').style.display = 'none';
                 } else { save(true); }
-            }, (err) => { showError("接続拒否: " + err.code); });
+            }, (err) => { showError("通信エラー: " + err.code); });
         }
 
         function save(immediate = false) {
