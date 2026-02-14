@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>勤務管理カレンダー v1.15 (トグル機能確認版)</title>
+    <title>勤務管理カレンダー v1.16 (完全同期版)</title>
     <style>
         /* --- Google Fonts (Noto Sans JP) --- */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
@@ -94,7 +94,6 @@
         .day-cell.is-today { border: 2px solid var(--text-sub); }
 
         .nobori-mark { margin-left: 2px; font-size: 0.8rem; color: #4a4a4a; }
-        /* 背景色があるときは●を白くして見やすくする */
         .day-cell[class*="status-"] .nobori-mark { color: #fff; }
         .day-cell.is-holiday .nobori-mark { color: inherit; }
 
@@ -150,9 +149,9 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-        // Firebase設定
+        // Firebase設定 (APIキーを小文字のlに修正しました)
         const firebaseConfig = {
-            apiKey: "AIzaSyDQ3fJpKeoQ6-mjsQGni8YLI8NH-Dp-JE0",
+            apiKey: "AIzaSyDQ3fJpKeoQ6-mjsQGni8YlI8NH-Dp-JE0",
             authDomain: "ka-shift-calendar.firebaseapp.com",
             projectId: "ka-shift-calendar",
             storageBucket: "ka-shift-calendar.firebasestorage.app",
@@ -269,7 +268,6 @@
                 const cell = document.createElement('div'); cell.className = 'day-cell';
                 const dWrap = document.createElement('span'); dWrap.textContent = loop.getDate();
                 
-                // ●マークの表示
                 if (m) { const sp=document.createElement('span'); sp.className='nobori-mark'; sp.textContent='●'; dWrap.appendChild(sp); }
                 cell.appendChild(dWrap);
                 
@@ -282,22 +280,17 @@
                 else if (s==='off'){ cell.classList.add('status-off'); counts.o++; }
                 else if (s==='public_off'){ cell.classList.add('status-public-off'); counts.po++; }
                 
-                // セルクリック時の挙動 (トグルロジック)
                 cell.onclick = () => { 
                     if(state.selectedMode === 'nobori'){ 
-                        // のぼりモード: タップごとに ON/OFF 切り替え
                         if(state.markers[k]) delete state.markers[k]; 
                         else state.markers[k] = true; 
                         save(); render(); 
                     } else { 
-                        // ステータスモード (出勤・有休等): 
-                        // 選択中のモードと現在のセルのステータスが同じなら解除、違えば適用
                         const cur = state.attendance[k]; 
                         let next = null; 
                         if(state.selectedMode) {
                             next = (state.selectedMode === cur) ? null : state.selectedMode; 
                         } else {
-                            // モード未選択時はローテーション切り替え
                             const cycle = [null, 'work', 'leave', 'off', 'public_off']; 
                             next = cycle[(cycle.indexOf(cur) + 1) % 5];
                         }
@@ -314,7 +307,6 @@
             const fill = counts.w+counts.l+counts.o+counts.po; if (fill!==counts.t) { const d=document.createElement('div'); d.className='error-message'; d.textContent=`未入力が ${counts.t-fill}日 あります。`; v.appendChild(d); }
             const req = parseInt(state.requiredDays[pk]||0); if(req>0){ const act=counts.w+counts.l; if(act<req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`不足: ${req-act}日`; v.appendChild(d); }else if(act>req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`超過: ${act-req}日`; v.appendChild(d); } }
             
-            // ボタンの選択状態の表示更新
             document.querySelectorAll('.stat-item[data-mode]').forEach(el => el.classList.toggle('active-mode', el.dataset.mode===state.selectedMode));
             document.getElementById('noboriBtn').classList.toggle('active-tool', state.selectedMode==='nobori');
         }
