@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>勤務管理カレンダー v1.11</title>
+    <style>
+        /* --- Google Fonts (Noto Sans JP) --- */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+        :root {
+            --bg-color: #f4f1ea;
+            --card-bg: #ffffff;
+            --text-main: #4a4a4a;
+            --text-sub: #8c8c8c;
+            --primary-work: #a7d7c5;
+            --primary-work-dark: #7fb5a1; 
+            --accent-off: #ffb7b2;
+            --accent-public-off: #ef9a9a;
+            --accent-off-dark: #e08e89;
+            --accent-leave: #ffb74d;
+            --accent-leave-dark: #f57c00;
+            --status-error-bg: #ffebee;
+            --status-error-text: #c62828;
+            --status-ok-bg: #e8f5e9;
+            --status-ok-text: #2e7d32;
+            --status-sync-bg: #e3f2fd;
+            --status-sync-text: #1565c0;
+            --shadow-card: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
+            --radius: 12px;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0; padding: 20px;
+            display: flex; justify-content: center; align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            width: 100%; max-width: 600px;
+            background-color: var(--card-bg); border-radius: var(--radius);
+            box-shadow: var(--shadow-card); overflow: hidden;
+            display: flex; flex-direction: column; position: relative;
+        }
+
+        .cloud-section { padding: 12px 24px; background-color: #f8f9fa; border-bottom: 1px solid #eee; display: flex; flex-direction: column; gap: 8px; }
+        .cloud-header { font-size: 0.85rem; font-weight: 700; color: var(--text-sub); display: flex; justify-content: space-between; align-items: center; }
+        .cloud-controls { display: flex; gap: 8px; }
+        .cloud-input { flex: 1; padding: 6px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; }
+        .cloud-btn { padding: 6px 12px; background-color: var(--text-sub); color: white; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
+        .cloud-btn.primary { background-color: var(--primary-work-dark); }
+        .sync-status { font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; background-color: #eee; color: #666; display: inline-flex; align-items: center; gap: 4px; }
+        .sync-status.active { background-color: var(--status-sync-bg); color: var(--status-sync-text); }
+        .sync-status.saved { background-color: var(--status-ok-bg); color: var(--status-ok-text); }
+
+        .toolbar { display: flex; gap: 8px; padding: 8px 24px; background-color: #fff; border-bottom: 1px solid #eee; overflow-x: auto; }
+        .tool-btn { flex: 1; white-space: nowrap; padding: 8px 12px; border: 1px solid #eee; border-radius: 6px; background-color: #fff; font-size: 0.85rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .tool-btn.active-tool { background-color: #fff3e0; border-color: #ffb74d; color: #f57c00; }
+
+        .header { padding: 16px 24px; background-color: #fff; display: flex; justify-content: space-between; align-items: center; }
+        .period-label { font-size: 1rem; font-weight: 700; color: var(--primary-work-dark); margin-bottom: 4px; }
+        .month-title { font-size: 1rem; font-weight: 500; color: var(--text-sub); margin: 0; }
+        .nav-btn { background: none; border: none; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
+
+        .stats-bar { display: flex; justify-content: space-between; align-items: flex-end; padding: 12px 10px; background-color: #fff; border-bottom: 1px solid #eee; gap: 4px; overflow-x: auto; }
+        .stat-item { display: flex; flex-direction: column; align-items: center; padding: 6px 8px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; min-width: 40px; }
+        .stat-item.active-mode { border-color: #ddd; background-color: #fafafa; }
+        .stat-item[data-mode="work"].active-mode { border-color: var(--primary-work); background-color: #eaf7f2; }
+        .stat-item[data-mode="leave"].active-mode { border-color: var(--accent-leave); background-color: #fff8e1; }
+        .stat-item[data-mode="off"].active-mode { border-color: var(--accent-off); background-color: #ffebee; }
+        .stat-item[data-mode="public_off"].active-mode { border-color: var(--accent-public-off); background-color: #ffebee; }
+        .stat-label-count { font-size: 0.65rem; color: var(--text-sub); font-weight: 700; white-space: nowrap; }
+        .stat-value { font-size: 1.1rem; font-weight: 700; line-height: 1.2; }
+        .input-field { width: 40px; text-align: center; border-radius: 6px; border: 1px solid #eee; font-weight: 700; }
+
+        .validation-area { padding: 8px 24px; background-color: #fafafa; border-top: 1px solid #eee; display: flex; flex-direction: column; gap: 4px; }
+        .error-message { color: var(--status-error-text); background-color: var(--status-error-bg); padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; }
+        .success-message { color: var(--status-ok-text); background-color: var(--status-ok-bg); padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; }
+
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding: 16px; }
+        .weekday { text-align: center; font-size: 0.8rem; color: var(--text-sub); margin-bottom: 8px; }
+        .day-cell { aspect-ratio: 1/1; border-radius: 8px; background-color: #f9f9f9; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 4px; cursor: pointer; position: relative; font-weight: 500; overflow: hidden; }
+        .day-cell.is-sat { color: #8ec5fc; }
+        .day-cell.is-sun, .day-cell.is-holiday { color: #d32f2f; }
+        .day-cell.status-work { background-color: var(--primary-work); color: #fff; }
+        .day-cell.status-leave { background-color: var(--accent-leave); color: #fff; }
+        .day-cell.status-off { background-color: var(--accent-off); color: #fff; }
+        .day-cell.status-public-off { background-color: var(--accent-public-off); color: #fff; }
+        .day-cell.is-today { border: 2px solid var(--text-sub); }
+        .nobori-mark { margin-left: 2px; font-size: 0.8rem; }
+        .status-label { font-size: 0.75rem; font-weight: 700; margin-top: 1px; }
+        .note-text { font-size: 0.6rem; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-overlay.active { display: flex; }
+        .modal-content { background: #fff; padding: 24px; border-radius: 12px; width: 80%; max-width: 320px; }
+        .modal-input { width: 100%; padding: 8px; margin: 12px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        .modal-btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 700; }
+        .modal-btn.save { background: var(--primary-work); color: #fff; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="cloud-section">
+            <div class="cloud-header"><span>☁️ データ同期設定</span><span id="syncStatus" class="sync-status">オフライン</span></div>
+            <div class="cloud-controls"><input type="text" id="shareIdInput" class="cloud-input" placeholder="共有ID (例: my-shop-01)"><button id="connectBtn" class="cloud-btn primary">同期開始</button></div>
+        </div>
+        <div class="toolbar">
+            <button class="tool-btn" id="batchWorkBtn">⚡️ 平日を出勤にする</button>
+            <button class="tool-btn" id="copyTextBtn">📋 有休のみコピー</button>
+            <button class="tool-btn" id="noboriBtn">🚚 のぼり</button>
+        </div>
+        <div class="header">
+            <button class="nav-btn" id="prevBtn">❮</button>
+            <div class="title-group"><div class="period-label" id="periodLabel"></div><h2 class="month-title" id="currentPeriodDisplay">読み込み中...</h2></div>
+            <button class="nav-btn" id="nextBtn">❯</button>
+        </div>
+        <div class="stats-bar">
+            <div class="stat-item no-click"><label class="stat-label-count">所定日数</label><input type="number" id="requiredDaysInput" class="input-field"></div>
+            <div class="stat-item" id="modeWork" data-mode="work"><span class="stat-label-count">出勤</span><span class="stat-value" id="workCount">0</span></div>
+            <div class="stat-item" id="modeLeave" data-mode="leave"><span class="stat-label-count">有休</span><span class="stat-value" id="leaveCount">0</span></div>
+            <div class="stat-item" id="modeOff" data-mode="off"><span class="stat-label-count">休日</span><span class="stat-value" id="offCount">0</span></div>
+            <div class="stat-item" id="modePublicOff" data-mode="public_off"><span class="stat-label-count">公休</span><span class="stat-value" id="publicOffCount">0</span></div>
+        </div>
+        <div class="validation-area"><div id="totalDaysDisplay"></div><div id="statusMessageContainer"></div></div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+
+    <div class="modal-overlay" id="memoModal">
+        <div class="modal-content"><div id="modalTitle"></div><input type="text" id="memoInput" class="modal-input"><div style="display:flex;justify-content:flex-end;gap:8px;"><button class="modal-btn" onclick="document.getElementById('memoModal').classList.remove('active')">消す</button><button class="modal-btn save" id="memoSaveBtn">保存</button></div></div>
+    </div>
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal-content"><h3>確認</h3><div id="confirmMessage" style="margin-bottom:15px"></div><div style="display:flex;justify-content:flex-end;gap:8px;"><button class="modal-btn" onclick="document.getElementById('confirmModal').classList.remove('active')">やめる</button><button class="modal-btn" style="background:#d32f2f;color:#fff" id="confirmOkBtn">実行</button></div></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+        import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+        import { getFirestore, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+
+        // =========================================================
+        // 【重要】お送りいただいた Firebase の設定コードを貼り付け済みです
+        // =========================================================
+        const myFirebaseConfig = {
+            apiKey: "AIzaSyDQ3fJpKeoQ6-mjsQGni8YLI8NH-Dp-JE0",
+            authDomain: "ka-shift-calendar.firebaseapp.com",
+            projectId: "ka-shift-calendar",
+            storageBucket: "ka-shift-calendar.firebasestorage.app",
+            messagingSenderId: "740196147233",
+            appId: "1:740196147233:web:8e0c59b466f515fb2c8360",
+            measurementId: "G-45CWYB75NE"
+        };
+
+        const envConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const firebaseConfig = (myFirebaseConfig.apiKey) ? myFirebaseConfig : (envConfig || {});
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'ka-shift-manager';
+        
+        let db, auth, user, unsubscribeDoc = null, isCloudActive = false, saveTimeout = null, confirmCallback = null, currentMemoKey = null;
+
+        const state = {
+            currentStartDate: new Date(),
+            attendance: JSON.parse(localStorage.getItem('attendanceData')) || {},
+            requiredDays: JSON.parse(localStorage.getItem('requiredDaysData')) || {},
+            notes: JSON.parse(localStorage.getItem('notesData')) || {},
+            markers: JSON.parse(localStorage.getItem('markersData')) || {}, 
+            selectedMode: null,
+        };
+
+        const Holidays = {
+            getEquinox: (y, t) => Math.floor(((t==='v')?20.8431:23.2488) + 0.242194 * (y-1980) - Math.floor((y-1980)/4)),
+            getMap: function(s, e) {
+                const h = {}, d = new Date(s); d.setDate(d.getDate()-7); const end = new Date(e); end.setDate(end.getDate()+7);
+                while(d <= end) { 
+                    const y=d.getFullYear(), m=d.getMonth()+1, date=d.getDate(), w=d.getDay(), nth=Math.ceil(date/7);
+                    let name = null;
+                    if(m===1&&date===1)name="元日";else if(m===2&&date===11)name="建国";else if(m===2&&date===23)name="天皇";
+                    else if(m===4&&date===29)name="昭和";else if(m===5&&date===3)name="憲法";else if(m===5&&date===4)name="緑";
+                    else if(m===5&&date===5)name="子供";else if(m===8&&date===11)name="山";else if(m===11&&date===3)name="文化";else if(m===11&&date===23)name="勤労";
+                    else if(w===1){if(m===1&&nth===2)name="成人";if(m===7&&nth===3)name="海";if(m===9&&nth===3)name="敬老";if(m===10&&nth===2)name="スポーツ";}
+                    if(m===3&&date===this.getEquinox(y,'v'))name="春分";if(m===9&&date===this.getEquinox(y,'a'))name="秋分";
+                    if(name) h[formatDateKey(d)] = name; d.setDate(d.getDate()+1);
+                }
+                d.setTime(s.getTime()); d.setDate(d.getDate()-7);
+                while(d <= end) { if(h[formatDateKey(d)] && d.getDay()===0) { let o=1; while(o<10){ const n=new Date(d); n.setDate(d.getDate()+o); if(h[formatDateKey(n)])o++; else{h[formatDateKey(n)]="振替";break;} } } d.setDate(d.getDate()+1); }
+                return h;
+            }
+        };
+
+        function formatDateKey(d) { return `${d.getFullYear()}-${('0'+(d.getMonth()+1)).slice(-2)}-${('0'+d.getDate()).slice(-2)}`; }
+        function initDate() { const today = new Date(); if (today.getDate() <= 15) state.currentStartDate = new Date(today.getFullYear(), today.getMonth()-1, 16); else state.currentStartDate = new Date(today.getFullYear(), today.getMonth(), 16); }
+
+        async function initFirebase() {
+            if (!firebaseConfig.apiKey) return;
+            const app = initializeApp(firebaseConfig); auth = getAuth(app); db = getFirestore(app);
+            await signInAnonymously(auth);
+            onAuthStateChanged(auth, (u) => { user = u; const sid = localStorage.getItem('lastShareId'); if (user && sid) { document.getElementById('shareIdInput').value = sid; connect(sid); } });
+        }
+
+        function connect(sid) {
+            if (!user || !db || !sid) return;
+            if (unsubscribeDoc) unsubscribeDoc();
+            isCloudActive = true; localStorage.setItem('lastShareId', sid);
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', sid);
+            unsubscribeDoc = onSnapshot(docRef, (snap) => {
+                if (snap.exists()) {
+                    const data = snap.data();
+                    state.attendance = data.attendance || {}; state.requiredDays = data.requiredDays || {};
+                    state.notes = data.notes || {}; state.markers = data.markers || {};
+                    render(); document.getElementById('syncStatus').className = 'sync-status saved'; document.getElementById('syncStatus').textContent = '同期中';
+                } else save(true);
+            }, () => { document.getElementById('syncStatus').textContent = 'エラー: DB未作成?'; });
+        }
+
+        function save(immediate = false) {
+            localStorage.setItem('attendanceData', JSON.stringify(state.attendance));
+            localStorage.setItem('requiredDaysData', JSON.stringify(state.requiredDays));
+            localStorage.setItem('notesData', JSON.stringify(state.notes));
+            localStorage.setItem('markersData', JSON.stringify(state.markers));
+            if (!isCloudActive || !user) return;
+            const sid = document.getElementById('shareIdInput').value;
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', sid);
+            const data = { attendance: state.attendance, requiredDays: state.requiredDays, notes: state.notes, markers: state.markers, updatedAt: new Date().toISOString() };
+            if (saveTimeout) clearTimeout(saveTimeout);
+            if (immediate) setDoc(docRef, data, { merge: true }); else saveTimeout = setTimeout(() => setDoc(docRef, data, { merge: true }), 1000);
+        }
+
+        function render() {
+            const grid = document.getElementById('calendarGrid'); grid.innerHTML = '';
+            const start = new Date(state.currentStartDate), end = new Date(start.getFullYear(), start.getMonth()+1, 15);
+            document.getElementById('periodLabel').textContent = `${end.getMonth()+1}月度`;
+            document.getElementById('currentPeriodDisplay').textContent = `${start.getFullYear()}年${start.getMonth()+1}月${start.getDate()}日 - ${end.getMonth()+1}月${end.getDate()}日`;
+            const pk = formatDateKey(start); document.getElementById('requiredDaysInput').value = state.requiredDays[pk] || '';
+            const holMap = Holidays.getMap(start, end);
+            const days = ['日','月','火','水','木','金','土'];
+            days.forEach(d => { const div=document.createElement('div'); div.className='weekday'; div.textContent=d; grid.appendChild(div); });
+            for (let i=0; i<start.getDay(); i++) { const e = document.createElement('div'); e.className = 'day-cell empty'; grid.appendChild(e); }
+            let loop = new Date(start), counts = { w:0, l:0, o:0, po:0, t:0 }, todayKey = formatDateKey(new Date());
+            while (loop <= end) {
+                counts.t++; const k = formatDateKey(loop), s = state.attendance[k], hol = holMap[k], n = state.notes[k], m = state.markers[k];
+                const cell = document.createElement('div'); cell.className = 'day-cell';
+                const dWrap = document.createElement('span'); dWrap.textContent = loop.getDate();
+                if (m) { const sp=document.createElement('span'); sp.className='nobori-mark'; sp.textContent='●'; dWrap.appendChild(sp); }
+                cell.appendChild(dWrap);
+                if (s==='leave') { const l=document.createElement('span'); l.className='status-label'; l.textContent='有休'; cell.appendChild(l); }
+                if (n) { const ns=document.createElement('span'); ns.className='note-text'; ns.textContent=n; cell.appendChild(ns); }
+                if (hol) cell.classList.add('is-holiday'); else if (loop.getDay()===0) cell.classList.add('is-sun'); else if (loop.getDay()===6) cell.classList.add('is-sat');
+                if (k === todayKey) cell.classList.add('is-today');
+                if (s==='work'){ cell.classList.add('status-work'); counts.w++; }
+                else if (s==='leave'){ cell.classList.add('status-leave'); counts.l++; }
+                else if (s==='off'){ cell.classList.add('status-off'); counts.o++; }
+                else if (s==='public_off'){ cell.classList.add('status-public-off'); counts.po++; }
+                cell.onclick = () => { if(state.selectedMode==='nobori'){ if(state.markers[k]) delete state.markers[k]; else state.markers[k]=true; save(); render(); } else { const cur=state.attendance[k]; let next=null; if(state.selectedMode) next=(state.selectedMode===cur)?null:state.selectedMode; else {const cy=[null,'work','leave','off','public_off']; next=cy[(cy.indexOf(cur)+1)%5];} if(next) state.attendance[k]=next; else delete state.attendance[k]; save(); render(); } };
+                cell.ondblclick = () => { currentMemoKey=k; document.getElementById('modalTitle').textContent=k+' メモ'; document.getElementById('memoInput').value=state.notes[k]||''; document.getElementById('memoModal').classList.add('active'); };
+                grid.appendChild(cell); loop.setDate(loop.getDate()+1);
+            }
+            document.getElementById('workCount').textContent=counts.w; document.getElementById('leaveCount').textContent=counts.l; document.getElementById('offCount').textContent=counts.o; document.getElementById('publicOffCount').textContent=counts.po;
+            const v = document.getElementById('statusMessageContainer'); v.innerHTML = ''; document.getElementById('totalDaysDisplay').textContent = `全体: ${counts.t}日`;
+            const fill = counts.w+counts.l+counts.o+counts.po; if (fill!==counts.t) { const d=document.createElement('div'); d.className='error-message'; d.textContent=`未入力が ${counts.t-fill}日 あります。`; v.appendChild(d); }
+            const req = parseInt(state.requiredDays[pk]||0); if(req>0){ const act=counts.w+counts.l; if(act<req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`不足: ${req-act}日`; v.appendChild(d); }else if(act>req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`超過: ${act-req}日`; v.appendChild(d); } }
+            document.querySelectorAll('.stat-item[data-mode]').forEach(el => el.classList.toggle('active-mode', el.dataset.mode===state.selectedMode));
+            document.getElementById('noboriBtn').classList.toggle('active-tool', state.selectedMode==='nobori');
+        }
+
+        document.getElementById('prevBtn').onclick = () => { state.currentStartDate.setMonth(state.currentStartDate.getMonth()-1); render(); };
+        document.getElementById('nextBtn').onclick = () => { state.currentStartDate.setMonth(state.currentStartDate.getMonth()+1); render(); };
+        document.getElementById('connectBtn').onclick = () => { const id = document.getElementById('shareIdInput').value; if(id) connect(id); };
+        document.getElementById('requiredDaysInput').oninput = (e) => { const k=formatDateKey(state.currentStartDate); if(e.target.value) state.requiredDays[k]=parseInt(e.target.value); else delete state.requiredDays[k]; save(); render(); };
+        document.getElementById('batchWorkBtn').onclick = () => { document.getElementById('confirmMessage').textContent='平日をすべて出勤にしますか？'; document.getElementById('confirmModal').classList.add('active'); confirmCallback=()=>{ const s=new Date(state.currentStartDate), e=new Date(s.getFullYear(), s.getMonth()+1, 15), h=Holidays.getMap(s,e); let l=new Date(s); while(l<=e){ const k=formatDateKey(l); if(l.getDay()!==0&&l.getDay()!==6&&!h[k])state.attendance[k]='work'; l.setDate(l.getDate()+1); } save(); render(); }; };
+        document.getElementById('confirmOkBtn').onclick = () => { if(confirmCallback)confirmCallback(); document.getElementById('confirmModal').classList.remove('active'); };
+        document.getElementById('copyTextBtn').onclick = () => { const s=new Date(state.currentStartDate), e=new Date(s.getFullYear(), s.getMonth()+1, 15), w=['日','月','火','水','木','金','土']; let t=`【${e.getMonth()+1}月 有休】\n`, c=0, l=new Date(s); while(l<=e){ const k=formatDateKey(l); if(state.attendance[k]==='leave'){ c++; t+=`${l.getDate()}(${w[l.getDay()]}): 有休${state.notes[k]?' ('+state.notes[k]+')':''}\n`; } l.setDate(l.getDate()+1); } t+=(c===0)?"なし":`合計: ${c}日`; navigator.clipboard.writeText(t); alert('コピーしました'); };
+        document.getElementById('noboriBtn').onclick = () => { state.selectedMode = state.selectedMode==='nobori'?null:'nobori'; render(); };
+        document.getElementById('memoSaveBtn').onclick = () => { const v=document.getElementById('memoInput').value.trim(); if(v) state.notes[currentMemoKey]=v; else delete state.notes[currentMemoKey]; save(); render(); document.getElementById('memoModal').classList.remove('active'); };
+        ['Work','Leave','Off','PublicOff'].forEach(m => { const id='mode'+m, val=m.replace(/[A-Z]/g, l=>'_'+l.toLowerCase()).replace(/^_/,''); document.getElementById(id).onclick=()=>{ state.selectedMode=(state.selectedMode===val)?null:val; render(); }; });
+
+        initDate(); render(); initFirebase(); 
+    </script>
+</body>
+</html>
