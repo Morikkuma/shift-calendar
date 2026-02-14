@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>勤務管理カレンダー v1.14 (同期修正版)</title>
+    <title>勤務管理カレンダー v1.15 (トグル機能確認版)</title>
     <style>
         /* --- Google Fonts (Noto Sans JP) --- */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
@@ -60,6 +60,7 @@
 
         .toolbar { display: flex; gap: 8px; padding: 8px 24px; background-color: #fff; border-bottom: 1px solid #eee; overflow-x: auto; }
         .tool-btn { flex: 1; white-space: nowrap; padding: 8px 12px; border: 1px solid #eee; border-radius: 6px; background-color: #fff; font-size: 0.85rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .tool-btn.active-tool { background-color: #fff3e0; border-color: #ffb74d; color: #f57c00; }
 
         .header { padding: 16px 24px; background-color: #fff; display: flex; justify-content: space-between; align-items: center; }
         .period-label { font-size: 1rem; font-weight: 700; color: var(--primary-work-dark); margin-bottom: 4px; }
@@ -85,11 +86,18 @@
         .day-cell { aspect-ratio: 1/1; border-radius: 8px; background-color: #f9f9f9; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 4px; cursor: pointer; position: relative; font-weight: 500; overflow: hidden; }
         .day-cell.is-sat { color: #8ec5fc; }
         .day-cell.is-sun, .day-cell.is-holiday { color: #d32f2f; }
+        
         .day-cell.status-work { background-color: var(--primary-work); color: #fff; }
         .day-cell.status-leave { background-color: var(--accent-leave); color: #fff; }
         .day-cell.status-off { background-color: var(--accent-off); color: #fff; }
         .day-cell.status-public-off { background-color: var(--accent-public-off); color: #fff; }
         .day-cell.is-today { border: 2px solid var(--text-sub); }
+
+        .nobori-mark { margin-left: 2px; font-size: 0.8rem; color: #4a4a4a; }
+        /* 背景色があるときは●を白くして見やすくする */
+        .day-cell[class*="status-"] .nobori-mark { color: #fff; }
+        .day-cell.is-holiday .nobori-mark { color: inherit; }
+
         .status-label { font-size: 0.75rem; font-weight: 700; margin-top: 1px; }
         .note-text { font-size: 0.6rem; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; }
 
@@ -142,9 +150,9 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-        // Firebase設定（小文字のlに修正済み）
+        // Firebase設定
         const firebaseConfig = {
-            apiKey: "AIzaSyDQ3fJpKeoQ6-mjsQGni8YlI8NH-Dp-JE0",
+            apiKey: "AIzaSyDQ3fJpKeoQ6-mjsQGni8YLI8NH-Dp-JE0",
             authDomain: "ka-shift-calendar.firebaseapp.com",
             projectId: "ka-shift-calendar",
             storageBucket: "ka-shift-calendar.firebasestorage.app",
@@ -260,8 +268,11 @@
                 counts.t++; const k = formatDateKey(loop), s = state.attendance[k], hol = holMap[k], n = state.notes[k], m = state.markers[k];
                 const cell = document.createElement('div'); cell.className = 'day-cell';
                 const dWrap = document.createElement('span'); dWrap.textContent = loop.getDate();
-                if (m) { const sp=document.createElement('span'); sp.style.marginLeft="2px"; sp.textContent='●'; dWrap.appendChild(sp); }
+                
+                // ●マークの表示
+                if (m) { const sp=document.createElement('span'); sp.className='nobori-mark'; sp.textContent='●'; dWrap.appendChild(sp); }
                 cell.appendChild(dWrap);
+                
                 if (s==='leave') { const l=document.createElement('span'); l.className='status-label'; l.textContent='有休'; cell.appendChild(l); }
                 if (n) { const ns=document.createElement('span'); ns.className='note-text'; ns.textContent=n; cell.appendChild(ns); }
                 if (hol) cell.classList.add('is-holiday'); else if (loop.getDay()===0) cell.classList.add('is-sun'); else if (loop.getDay()===6) cell.classList.add('is-sat');
@@ -270,7 +281,31 @@
                 else if (s==='leave'){ cell.classList.add('status-leave'); counts.l++; }
                 else if (s==='off'){ cell.classList.add('status-off'); counts.o++; }
                 else if (s==='public_off'){ cell.classList.add('status-public-off'); counts.po++; }
-                cell.onclick = () => { if(state.selectedMode==='nobori'){ if(state.markers[k]) delete state.markers[k]; else state.markers[k]=true; save(); render(); } else { const cur=state.attendance[k]; let next=null; if(state.selectedMode) next=(state.selectedMode===cur)?null:state.selectedMode; else {const cy=[null,'work','leave','off','public_off']; next=cy[(cy.indexOf(cur)+1)%5];} if(next) state.attendance[k]=next; else delete state.attendance[k]; save(); render(); } };
+                
+                // セルクリック時の挙動 (トグルロジック)
+                cell.onclick = () => { 
+                    if(state.selectedMode === 'nobori'){ 
+                        // のぼりモード: タップごとに ON/OFF 切り替え
+                        if(state.markers[k]) delete state.markers[k]; 
+                        else state.markers[k] = true; 
+                        save(); render(); 
+                    } else { 
+                        // ステータスモード (出勤・有休等): 
+                        // 選択中のモードと現在のセルのステータスが同じなら解除、違えば適用
+                        const cur = state.attendance[k]; 
+                        let next = null; 
+                        if(state.selectedMode) {
+                            next = (state.selectedMode === cur) ? null : state.selectedMode; 
+                        } else {
+                            // モード未選択時はローテーション切り替え
+                            const cycle = [null, 'work', 'leave', 'off', 'public_off']; 
+                            next = cycle[(cycle.indexOf(cur) + 1) % 5];
+                        }
+                        if(next) state.attendance[k] = next; 
+                        else delete state.attendance[k]; 
+                        save(); render(); 
+                    } 
+                };
                 cell.ondblclick = () => { currentMemoKey=k; document.getElementById('modalTitle').textContent=k+' メモ'; document.getElementById('memoInput').value=state.notes[k]||''; document.getElementById('memoModal').classList.add('active'); };
                 grid.appendChild(cell); loop.setDate(loop.getDate()+1);
             }
@@ -278,7 +313,10 @@
             const v = document.getElementById('statusMessageContainer'); v.innerHTML = ''; document.getElementById('totalDaysDisplay').textContent = `全体: ${counts.t}日`;
             const fill = counts.w+counts.l+counts.o+counts.po; if (fill!==counts.t) { const d=document.createElement('div'); d.className='error-message'; d.textContent=`未入力が ${counts.t-fill}日 あります。`; v.appendChild(d); }
             const req = parseInt(state.requiredDays[pk]||0); if(req>0){ const act=counts.w+counts.l; if(act<req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`不足: ${req-act}日`; v.appendChild(d); }else if(act>req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`超過: ${act-req}日`; v.appendChild(d); } }
+            
+            // ボタンの選択状態の表示更新
             document.querySelectorAll('.stat-item[data-mode]').forEach(el => el.classList.toggle('active-mode', el.dataset.mode===state.selectedMode));
+            document.getElementById('noboriBtn').classList.toggle('active-tool', state.selectedMode==='nobori');
         }
 
         document.getElementById('prevBtn').onclick = () => { state.currentStartDate.setMonth(state.currentStartDate.getMonth()-1); render(); };
@@ -287,7 +325,9 @@
         document.getElementById('requiredDaysInput').oninput = (e) => { const k=formatDateKey(state.currentStartDate); if(e.target.value) state.requiredDays[k]=parseInt(e.target.value); else delete state.requiredDays[k]; save(); render(); };
         document.getElementById('batchWorkBtn').onclick = () => { document.getElementById('confirmMessage').textContent='平日をすべて出勤にしますか？'; document.getElementById('confirmModal').classList.add('active'); confirmCallback=()=>{ const s=new Date(state.currentStartDate), e=new Date(s.getFullYear(), s.getMonth()+1, 15), h=Holidays.getMap(s,e); let l=new Date(s); while(l<=e){ const k=formatDateKey(l); if(l.getDay()!==0&&l.getDay()!==6&&!h[k])state.attendance[k]='work'; l.setDate(l.getDate()+1); } save(); render(); }; };
         document.getElementById('confirmOkBtn').onclick = () => { if(confirmCallback)confirmCallback(); document.getElementById('confirmModal').classList.remove('active'); };
-        document.getElementById('copyTextBtn').onclick = () => { const s=new Date(state.currentStartDate), e=new Date(s.getFullYear(), s.getMonth()+1, 15), w=['日','月','火','水','木','金','土']; let t=`【${e.getMonth()+1}月度 有休】\n`, c=0, l=new Date(s); while(l<=e){ const k=formatDateKey(l); if(state.attendance[k]==='leave'){ c++; t+=`${l.getDate()}(${w[l.getDay()]}): 有休${state.notes[k]?' ('+state.notes[k]+')':''}\n`; } l.setDate(l.getDate()+1); } t+=(c===0)?"なし":`合計: ${c}日`; navigator.clipboard.writeText(t); alert('コピーしました'); };
+        document.getElementById('copyTextBtn').onclick = () => { const s=new Date(state.currentStartDate), e=new Date(s.getFullYear(), s.getMonth()+1, 15), w=['日','月','火','水','木','金','土']; let t=`【${e.getMonth()+1}月度 有休】\n`, c=0, l=new Date(s); while(l<=e){ const k=formatDateKey(l); if(state.attendance[k]==='leave'){ c++; t+=`${l.getDate()}(${w[l.getDay()]}): 有休${state.notes[k]?' ('+state.notes[k]+')':''}\n`; } l.setDate(l.getDate()+1); } t+=(c===0)?"なし":`合計: ${c}日`; 
+            navigator.clipboard.writeText(t).then(() => alert('コピーしました'));
+        };
         document.getElementById('noboriBtn').onclick = () => { state.selectedMode = state.selectedMode==='nobori'?null:'nobori'; render(); };
         document.getElementById('memoSaveBtn').onclick = () => { const v=document.getElementById('memoInput').value.trim(); if(v) state.notes[currentMemoKey]=v; else delete state.notes[currentMemoKey]; save(); render(); document.getElementById('memoModal').classList.remove('active'); };
         ['Work','Leave','Off','PublicOff'].forEach(m => { const id='mode'+m, val=m.replace(/[A-Z]/g, l=>'_'+l.toLowerCase()).replace(/^_/,''); document.getElementById(id).onclick=()=>{ state.selectedMode=(state.selectedMode===val)?null:val; render(); }; });
