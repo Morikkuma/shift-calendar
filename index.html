@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>勤務管理カレンダー v1.33 (メモ拡大版)</title>
+    <title>勤務管理カレンダー v1.36 (メモ例変更版)</title>
     <style>
         /* --- Google Fonts --- */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
@@ -203,6 +203,7 @@
         
         <div class="toolbar locked" id="mainToolbar">
             <button class="tool-btn" id="noboriBtn">🚚 拠点積</button>
+            <button class="tool-btn" id="memoModeBtn">📝 メモ</button>
             <button class="tool-btn" id="copyTextBtn">📋 有休申請日</button>
             <button class="tool-btn danger" id="resetAllBtn">♻️ リセット</button>
         </div>
@@ -239,7 +240,7 @@
     <div class="modal-overlay" id="memoModal">
         <div class="modal-content">
             <div id="modalTitle" style="font-weight:700; margin-bottom:10px;"></div>
-            <textarea id="memoInput" class="modal-textarea" placeholder="メモを入力 (例: 早番, 13-22, リーダー etc)"></textarea>
+            <textarea id="memoInput" class="modal-textarea" placeholder="メモを入力 (例：安全会議 etc)"></textarea>
             <div style="display:flex;justify-content:flex-end;gap:8px;">
                 <button class="modal-btn cancel" id="memoCancelBtn">キャンセル</button>
                 <button class="modal-btn save" id="memoSaveBtn">保存</button>
@@ -422,6 +423,7 @@
                     const nextK = formatDateKey(next);
                     const nextStatus = state.attendance[nextK];
                     const nextMarker = state.markers[nextK];
+                    
                     const isDepartureDay = (nextStatus === 'work' && !nextMarker);
 
                     if (!isDepartureDay) {
@@ -429,6 +431,7 @@
                         prev.setDate(loop.getDate() - 1);
                         const prevK = formatDateKey(prev);
                         const prevStatus = state.attendance[prevK];
+                        
                         if (prevStatus && prevStatus !== 'work') {
                             alerts.push({ msg: `${loop.getDate()}日 出勤？` });
                         }
@@ -451,10 +454,12 @@
                     next.setDate(loop.getDate() + 1);
                     const nextK = formatDateKey(next);
                     const nextStatus = state.attendance[nextK];
+                    
                     if (!nextStatus && checkIsLoading(loop)) {
                          alerts.push({ msg: `${loop.getDate()}日 確認` });
                     }
                 }
+
                 loop.setDate(loop.getDate()+1);
             }
             return alerts;
@@ -585,7 +590,19 @@
 
             document.querySelectorAll('.stat-item[data-mode]').forEach(el => el.classList.toggle('active-mode', el.dataset.mode===state.selectedMode));
             document.getElementById('noboriBtn').classList.toggle('active-tool', state.selectedMode==='nobori');
+            document.getElementById('memoModeBtn').classList.toggle('active-tool', state.selectedMode==='memo');
         }
+
+        // --- 追加した関数: メモモーダルを開く ---
+        function openMemoModal(dateKey) {
+            currentMemoKey = dateKey;
+            const existingNote = state.notes[dateKey] || "";
+            document.getElementById('modalTitle').textContent = `${dateKey} のメモ`;
+            document.getElementById('memoInput').value = existingNote;
+            document.getElementById('memoModal').classList.add('active');
+            document.getElementById('memoInput').focus();
+        }
+        // ------------------------------------
 
         function createDayCell(dateObj, holMap, isOutside, counts = null, todayKey = null, warningDates = new Set()) {
             const k = formatDateKey(dateObj);
@@ -633,7 +650,10 @@
                 if (state.isLocked) return;
                 resetAutoLockTimer(); 
 
-                if (state.selectedMode === 'nobori') {
+                if (state.selectedMode === 'memo') {
+                    // メモモードの場合はメモモーダルを開く
+                    openMemoModal(k);
+                } else if (state.selectedMode === 'nobori') {
                     if (state.markers[k]) delete state.markers[k]; else state.markers[k] = true;
                     save(); render();
                 } else if (!isOutside) {
@@ -650,13 +670,6 @@
                 }
             };
             
-            if (!isOutside) {
-                cell.ondblclick = () => { 
-                    if (state.isLocked) return;
-                    resetAutoLockTimer(); 
-                    currentMemoKey=k; document.getElementById('modalTitle').textContent=k+' メモ'; document.getElementById('memoInput').value=state.notes[k]||''; document.getElementById('memoModal').classList.add('active'); 
-                };
-            }
             document.getElementById('calendarGrid').appendChild(cell);
         }
 
@@ -722,7 +735,10 @@
         
         document.getElementById('confirmOkBtn').onclick = () => { if(confirmCallback) confirmCallback(); document.getElementById('confirmModal').classList.remove('active'); };
         document.getElementById('confirmCancelBtn').onclick = () => { document.getElementById('confirmModal').classList.remove('active'); };
+        
         document.getElementById('noboriBtn').onclick = () => { state.selectedMode = state.selectedMode==='nobori'?null:'nobori'; render(); };
+        document.getElementById('memoModeBtn').onclick = () => { state.selectedMode = state.selectedMode==='memo'?null:'memo'; render(); };
+        
         document.getElementById('memoCancelBtn').onclick = () => document.getElementById('memoModal').classList.remove('active');
         document.getElementById('memoSaveBtn').onclick = () => { const v = document.getElementById('memoInput').value.trim(); if(v) state.notes[currentMemoKey] = v; else delete state.notes[currentMemoKey]; save(); render(); document.getElementById('memoModal').classList.remove('active'); };
         
