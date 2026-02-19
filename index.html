@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>勤務管理カレンダー v1.42 (メール本文様式変更版)</title>
+    <title>勤務管理カレンダー v1.44 (出力機能調整版)</title>
     <style>
         /* --- Google Fonts --- */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
@@ -494,8 +494,15 @@
                         const prevK = formatDateKey(prev);
                         const prevStatus = state.attendance[prevK];
                         
-                        if (prevStatus && prevStatus !== 'work') {
-                            alerts.push({ msg: `${loop.getDate()}日 出勤？` });
+                        // バグ修正: 表示期間内の場合はundefined(未入力)でも警告を出す
+                        if (prev >= start) {
+                            if (prevStatus !== 'work') {
+                                alerts.push({ msg: `${loop.getDate()}日 出勤？` });
+                            }
+                        } else {
+                            if (prevStatus && prevStatus !== 'work') {
+                                alerts.push({ msg: `${loop.getDate()}日 出勤？` });
+                            }
                         }
                     }
                 }
@@ -514,11 +521,12 @@
                 if (currentStatus !== 'work') {
                     const next = new Date(loop);
                     next.setDate(loop.getDate() + 1);
-                    const nextK = formatDateKey(next);
-                    const nextStatus = state.attendance[nextK];
-                    
-                    if (!nextStatus && checkIsLoading(loop)) {
-                         alerts.push({ msg: `${loop.getDate()}日 確認` });
+                    if (next <= end) {
+                        const nextK = formatDateKey(next);
+                        const nextStatus = state.attendance[nextK];
+                        if (!nextStatus && checkIsLoading(loop)) {
+                             alerts.push({ msg: `${loop.getDate()}日 確認` });
+                        }
                     }
                 }
 
@@ -564,8 +572,11 @@
                          const prevK = formatDateKey(prev);
                          const prevStatus = state.attendance[prevK];
                          
-                         if (prevStatus && prevStatus !== 'work') {
-                             warnings.add(prevK);
+                         // バグ修正: 期間内未入力も検知
+                         if (prev >= start) {
+                             if (prevStatus !== 'work') warnings.add(prevK);
+                         } else {
+                             if (prevStatus && prevStatus !== 'work') warnings.add(prevK);
                          }
                      }
                 }
@@ -585,11 +596,12 @@
                 if (status !== 'work') {
                     const next = new Date(loop);
                     next.setDate(loop.getDate() + 1);
-                    const nextK = formatDateKey(next);
-                    const nextStatus = state.attendance[nextK];
-                    
-                    if (!nextStatus && checkIsLoading(loop)) {
-                         warnings.add(k);
+                    if (next <= end) {
+                        const nextK = formatDateKey(next);
+                        const nextStatus = state.attendance[nextK];
+                        if (!nextStatus && checkIsLoading(loop)) {
+                             warnings.add(k);
+                        }
                     }
                 }
 
@@ -640,7 +652,12 @@
             const fill = counts.w+counts.l+counts.o+counts.po; 
             if (fill!==counts.t) { const d=document.createElement('div'); d.className='error-message'; d.textContent=`未入力が ${counts.t-fill}日 あります。`; v.appendChild(d); }
             const req = parseInt(state.requiredDays[pk]||0); 
-            if(req>0){ const act=counts.w+counts.l; if(act<req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`不足: ${req-act}日`; v.appendChild(d); }else if(act>req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`超過: ${act-req}日`; v.appendChild(d); } }
+            if(req>0){ 
+                // バグ修正: 実働(act)から有休(counts.l)を除外。有休は休日扱い。
+                const act = counts.w; 
+                if(act<req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`不足: ${req-act}日`; v.appendChild(d); }
+                else if(act>req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`超過: ${act-req}日`; v.appendChild(d); } 
+            }
             
             const alerts = checkNoboriAlerts(start, end);
             alerts.forEach(a => {
@@ -740,6 +757,8 @@
                 }
             };
             
+            // バグ修正: 不要になったダブルタップ(ondblclick)入力を完全削除
+
             document.getElementById('calendarGrid').appendChild(cell);
         }
 
@@ -826,9 +845,9 @@
         document.getElementById('memoCancelBtn').onclick = () => document.getElementById('memoModal').classList.remove('active');
         document.getElementById('memoSaveBtn').onclick = () => { const v = document.getElementById('memoInput').value.trim(); if(v) state.notes[currentMemoKey] = v; else delete state.notes[currentMemoKey]; save(); render(); document.getElementById('memoModal').classList.remove('active'); };
         
-        // 出力機能（メール送信：強制リロード対策版）
+        // 出力機能（メール送信：PC/スマホブラウザ判定追加）
         document.getElementById('copyTextBtn').onclick = (e) => { 
-            e.preventDefault(); // デフォルトアクションの防止
+            e.preventDefault(); 
             if (state.isLocked) return;
             resetAutoLockTimer();
 
@@ -842,6 +861,7 @@
             
             while(loop <= end){ 
                 const k = formatDateKey(loop); 
+                // 希望休(wishLeaves)が設定されている日のみ抽出
                 if(state.wishLeaves[k]) { 
                     const day = loop.getDay();
                     const hol = holMap[k] ? ` 祝日：${holMap[k]}` : '';
@@ -866,7 +886,9 @@
                 return;
             }
 
-            const subject = `【希望休申請】${end.getMonth()+1}月度`;
+            // 件名
+            const subject = `【休み申請】${end.getMonth()+1}月度`;
+            // 本文フォーマット
             const body = `お疲れ様です。\n下記にて、休みをいただきたく申請いたします。\n\n【${end.getMonth()+1}月度 】\n${datesList}\nお手数をおかけしますが、よろしくお願いいたします。`;
 
             // 万が一のためのクリップボードへのコピー
@@ -879,27 +901,31 @@
 
             const mailtoUrl = `mailto:${toList.join(',')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
             
-            // aタグを使った新しいタブでの起動（リロード防止）
-            const a = document.createElement('a');
-            a.href = mailtoUrl;
-            a.target = '_blank';
-            a.rel = 'noopener noreferrer';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            const ua = navigator.userAgent.toLowerCase();
+            const isAppBrowser = ua.indexOf('line') > -1 || ua.indexOf('instagram') > -1;
+
+            if (isAppBrowser) {
+                // LINE等のアプリ内ブラウザの場合は強制リロード回避のため別タブ起動
+                const a = document.createElement('a');
+                a.href = mailtoUrl;
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                setTimeout(() => {
+                    showAlert("【重要】\nLINE等のアプリ内ブラウザではメールアプリが正常に起動せず、データが初期化される場合があります。\n\n右下（または右上）のメニューから「ブラウザで開く（Safari/Chrome等）」を選択してご利用ください。\n\n※メール本文はコピーされていますので、ご自身でメールアプリを開いて貼り付けることも可能です。");
+                }, 1500);
+            } else {
+                // PCブラウザや標準スマホブラウザ（Safari/Chrome等）は直接起動
+                window.location.href = mailtoUrl;
+            }
 
             const msg = document.getElementById('copyStatusMsg');
             msg.textContent = 'メールアプリを起動します\n（本文はコピー済みです）';
             msg.style.display = 'block';
             setTimeout(() => { msg.style.display = 'none'; }, 3000);
-            
-            // アプリ内ブラウザの検知と警告
-            const ua = navigator.userAgent.toLowerCase();
-            if (ua.indexOf('line') > -1 || ua.indexOf('instagram') > -1) {
-                setTimeout(() => {
-                    showAlert("【重要】\nLINE等のアプリ内ブラウザではメールアプリが正常に起動せず、データが初期化される場合があります。\n\n右下（または右上）のメニューから「ブラウザで開く（Safari/Chrome等）」を選択してご利用ください。\n\n※メール本文はコピーされていますので、ご自身でメールアプリを開いて貼り付けることも可能です。");
-                }, 1500);
-            }
         };
 
         ['Work','WishLeave','Leave','Off','PublicOff'].forEach(m => { 
