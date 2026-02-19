@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>勤務管理カレンダー v1.46 (名前設定追加版)</title>
+    <title>勤務管理カレンダー v1.47 (名前設定バグ修正版)</title>
     <style>
         /* --- Google Fonts --- */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
@@ -801,12 +801,14 @@
         document.getElementById('settingsBtn').onclick = () => {
             if (state.isLocked) return;
             resetAutoLockTimer();
+            document.getElementById('senderNameInput').value = state.settings.senderName || '';
             document.getElementById('email1Input').value = state.settings.email1 || '';
             document.getElementById('email2Input').value = state.settings.email2 || '';
             document.getElementById('settingsModal').classList.add('active');
         };
         document.getElementById('settingsCancelBtn').onclick = () => document.getElementById('settingsModal').classList.remove('active');
         document.getElementById('settingsSaveBtn').onclick = () => {
+            state.settings.senderName = document.getElementById('senderNameInput').value.trim();
             state.settings.email1 = document.getElementById('email1Input').value.trim();
             state.settings.email2 = document.getElementById('email2Input').value.trim();
             save();
@@ -842,7 +844,7 @@
         document.getElementById('memoCancelBtn').onclick = () => document.getElementById('memoModal').classList.remove('active');
         document.getElementById('memoSaveBtn').onclick = () => { const v = document.getElementById('memoInput').value.trim(); if(v) state.notes[currentMemoKey] = v; else delete state.notes[currentMemoKey]; save(); render(); document.getElementById('memoModal').classList.remove('active'); };
         
-        // 出力機能
+        // 出力機能（メール送信：PC/スマホブラウザ判定追加）
         document.getElementById('copyTextBtn').onclick = (e) => { 
             e.preventDefault(); 
             if (state.isLocked) return;
@@ -858,6 +860,7 @@
             
             while(loop <= end){ 
                 const k = formatDateKey(loop); 
+                // 希望休(wishLeaves)が設定されている日のみ抽出
                 if(state.wishLeaves[k]) { 
                     const day = loop.getDay();
                     const hol = holMap[k] ? ` 祝日：${holMap[k]}` : '';
@@ -883,7 +886,8 @@
             }
 
             // 件名
-            const subject = `希望休申請 ${end.getMonth()+1}月度`;
+            const senderName = state.settings.senderName ? `  ${state.settings.senderName}` : '';
+            const subject = `希望休申請 ${end.getMonth()+1}月度${senderName}`;
             // 本文フォーマット
             const body = `お疲れ様です。\n下記にて、休みをいただきたく申請いたします。\n\n【${end.getMonth()+1}月度 】\n${datesList}\nお手数をおかけしますが、よろしくお願いいたします。`;
 
