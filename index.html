@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>勤務管理カレンダー v1.44 (出力機能調整版)</title>
+    <title>勤務管理カレンダー v1.46 (名前設定追加版)</title>
     <style>
         /* --- Google Fonts --- */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
@@ -264,7 +264,9 @@
     <div class="modal-overlay" id="settingsModal">
         <div class="modal-content">
             <h3 style="margin-top:0;">設定</h3>
-            <p style="font-size:0.8rem; color:#666;">出力時（メール送信）の宛先となる、配車係のメールアドレスを登録してください。</p>
+            <p style="font-size:0.8rem; color:#666;">出力時（メール送信）の宛先となる、配車係のメールアドレスと、件名に表示するお名前を登録してください。</p>
+            <label style="font-size:0.85rem; font-weight:bold;">あなたのお名前（件名に表示）</label>
+            <input type="text" id="senderNameInput" class="modal-input" placeholder="例：山田 太郎">
             <label style="font-size:0.85rem; font-weight:bold;">メールアドレス 1</label>
             <input type="email" id="email1Input" class="modal-input" placeholder="例：haisha1@example.com">
             <label style="font-size:0.85rem; font-weight:bold;">メールアドレス 2 (任意)</label>
@@ -325,7 +327,7 @@
             notes: JSON.parse(localStorage.getItem('notesData')) || {},
             markers: JSON.parse(localStorage.getItem('markersData')) || {}, 
             wishLeaves: JSON.parse(localStorage.getItem('wishLeavesData')) || {}, 
-            settings: JSON.parse(localStorage.getItem('settingsData')) || { email1: '', email2: '' }, 
+            settings: JSON.parse(localStorage.getItem('settingsData')) || { email1: '', email2: '', senderName: '' }, 
             selectedMode: null,
             isLocked: true 
         };
@@ -379,7 +381,7 @@
                     state.notes = data.notes || {}; 
                     state.markers = data.markers || {};
                     state.wishLeaves = data.wishLeaves || {};
-                    state.settings = data.settings || { email1: '', email2: '' };
+                    state.settings = data.settings || { email1: '', email2: '', senderName: '' };
                     render();
                     document.getElementById('syncStatus').className = 'sync-status saved';
                     document.getElementById('syncStatus').textContent = '同期中';
@@ -494,7 +496,6 @@
                         const prevK = formatDateKey(prev);
                         const prevStatus = state.attendance[prevK];
                         
-                        // バグ修正: 表示期間内の場合はundefined(未入力)でも警告を出す
                         if (prev >= start) {
                             if (prevStatus !== 'work') {
                                 alerts.push({ msg: `${loop.getDate()}日 出勤？` });
@@ -572,7 +573,6 @@
                          const prevK = formatDateKey(prev);
                          const prevStatus = state.attendance[prevK];
                          
-                         // バグ修正: 期間内未入力も検知
                          if (prev >= start) {
                              if (prevStatus !== 'work') warnings.add(prevK);
                          } else {
@@ -653,7 +653,6 @@
             if (fill!==counts.t) { const d=document.createElement('div'); d.className='error-message'; d.textContent=`未入力が ${counts.t-fill}日 あります。`; v.appendChild(d); }
             const req = parseInt(state.requiredDays[pk]||0); 
             if(req>0){ 
-                // バグ修正: 実働(act)から有休(counts.l)を除外。有休は休日扱い。
                 const act = counts.w; 
                 if(act<req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`不足: ${req-act}日`; v.appendChild(d); }
                 else if(act>req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`超過: ${act-req}日`; v.appendChild(d); } 
@@ -757,8 +756,6 @@
                 }
             };
             
-            // バグ修正: 不要になったダブルタップ(ondblclick)入力を完全削除
-
             document.getElementById('calendarGrid').appendChild(cell);
         }
 
@@ -845,7 +842,7 @@
         document.getElementById('memoCancelBtn').onclick = () => document.getElementById('memoModal').classList.remove('active');
         document.getElementById('memoSaveBtn').onclick = () => { const v = document.getElementById('memoInput').value.trim(); if(v) state.notes[currentMemoKey] = v; else delete state.notes[currentMemoKey]; save(); render(); document.getElementById('memoModal').classList.remove('active'); };
         
-        // 出力機能（メール送信：PC/スマホブラウザ判定追加）
+        // 出力機能
         document.getElementById('copyTextBtn').onclick = (e) => { 
             e.preventDefault(); 
             if (state.isLocked) return;
@@ -861,7 +858,6 @@
             
             while(loop <= end){ 
                 const k = formatDateKey(loop); 
-                // 希望休(wishLeaves)が設定されている日のみ抽出
                 if(state.wishLeaves[k]) { 
                     const day = loop.getDay();
                     const hol = holMap[k] ? ` 祝日：${holMap[k]}` : '';
@@ -887,7 +883,7 @@
             }
 
             // 件名
-            const subject = `【休み申請】${end.getMonth()+1}月度`;
+            const subject = `希望休申請 ${end.getMonth()+1}月度`;
             // 本文フォーマット
             const body = `お疲れ様です。\n下記にて、休みをいただきたく申請いたします。\n\n【${end.getMonth()+1}月度 】\n${datesList}\nお手数をおかけしますが、よろしくお願いいたします。`;
 
