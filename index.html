@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>勤務管理カレンダー v1.38 (連絡事項フォーマット修正版)</title>
+    <title>勤務管理カレンダー v1.42 (メール本文様式変更版)</title>
     <style>
         /* --- Google Fonts --- */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
@@ -16,10 +16,11 @@
             --primary-work: #a7d7c5;      /* 出勤 */
             --primary-work-dark: #7fb5a1; 
             --accent-off: #ffb7b2;        /* 休日 */
-            --accent-public-off: #ef9a9a; /* 法休 */
+            --accent-public-off: #ef5350; /* 法休 */
             --accent-off-dark: #e08e89;
             --accent-leave: #ffb74d;      /* 有休 */
             --accent-leave-dark: #f57c00;
+            --accent-wish: #b71c1c;       /* 希望休 (濃い赤) */
             
             --status-error-bg: #ffebee;
             --status-error-text: #c62828;
@@ -83,11 +84,13 @@
         .stat-item { display: flex; flex-direction: column; align-items: center; padding: 6px 8px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; min-width: 40px; background-color: #fff; transition: all 0.2s; }
         
         .stat-item[data-mode="work"] { border-color: var(--primary-work); }
+        .stat-item[data-mode="wish_leave"] { border-color: var(--accent-wish); }
         .stat-item[data-mode="leave"] { border-color: var(--accent-leave); }
         .stat-item[data-mode="off"] { border-color: var(--accent-off); }
         .stat-item[data-mode="public_off"] { border-color: var(--accent-public-off); }
         
         .stat-item[data-mode="work"].active-mode { background-color: #eaf7f2; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .stat-item[data-mode="wish_leave"].active-mode { background-color: #ffebee; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .stat-item[data-mode="leave"].active-mode { background-color: #fff8e1; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .stat-item[data-mode="off"].active-mode { background-color: #ffebee; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .stat-item[data-mode="public_off"].active-mode { background-color: #ffebee; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-color: #e57373; }
@@ -98,8 +101,9 @@
         .stat-label-count { font-size: 0.65rem; color: var(--text-main); font-weight: 700; white-space: nowrap; }
         .stat-value { font-size: 1.1rem; font-weight: 700; line-height: 1.2; }
         .stat-work { color: var(--primary-work-dark); }
+        .stat-wish { color: var(--accent-wish); }
         .stat-off { color: var(--accent-off-dark); }
-        .stat-public-off { color: #e57373; }
+        .stat-public-off { color: #d32f2f; }
         .stat-leave { color: var(--accent-leave-dark); }
         .input-field { width: 40px; text-align: center; border-radius: 6px; border: 1px solid #e0e0e0; font-weight: 700; }
 
@@ -135,20 +139,29 @@
         
         .day-cell.is-holiday, .day-cell.is-sun { font-weight: 700; }
         .day-cell.is-today { border: 2px solid var(--text-sub); }
+        
+        /* 希望休の濃い赤枠 */
+        .day-cell.is-wish-leave { box-shadow: inset 0 0 0 3px var(--accent-wish); }
 
         /* 日付文字サイズ調整 */
         .day-date { font-size: 0.85rem; font-weight: 700; margin-bottom: 1px; }
 
-        .nobori-mark { margin-left: 2px; font-size: 0.8rem; color: #4a4a4a; font-weight: normal; }
+        /* のぼりマーク (●) サイズ調整 */
+        .nobori-mark { 
+            margin-left: 2px; 
+            font-size: 0.6rem; 
+            color: #4a4a4a; 
+            font-weight: normal; 
+        }
         .day-cell[class*="status-"] .nobori-mark { color: #fff; }
         .day-cell.is-holiday .nobori-mark, .day-cell.is-sun .nobori-mark { color: #d32f2f; }
 
         .holiday-name { font-size: 0.5rem; line-height: 1; margin-top: 1px; text-align: center; color: #d32f2f; font-weight: 400; }
         .status-label { font-size: 0.7rem; font-weight: 700; margin-top: 1px; }
         
-        /* メモ表示の調整 (文字サイズ拡大) */
+        /* メモ表示 */
         .note-text { 
-            font-size: 0.9rem; /* 元の0.55remから拡大 */
+            font-size: 0.9rem; 
             margin-top: 2px; 
             white-space: nowrap; 
             overflow: hidden; 
@@ -159,7 +172,7 @@
             color: #333;
             line-height: 1.1;
         }
-        .day-cell[class*="status-"] .note-text { color: #fff; } /* 背景ありなら白文字 */
+        .day-cell[class*="status-"] .note-text { color: #fff; }
 
         /* 警告アイコン */
         .warning-icon { 
@@ -174,26 +187,20 @@
         .modal-overlay.active { display: flex; }
         .modal-content { background: #fff; padding: 24px; border-radius: 12px; width: 85%; max-width: 350px; }
         
-        /* テキストエリアに変更 */
         .modal-textarea { 
-            width: 100%; 
-            height: 100px; 
-            padding: 10px; 
-            margin: 12px 0; 
-            border: 1px solid #ccc; 
-            border-radius: 8px; 
-            box-sizing: border-box; 
-            font-size: 1.1rem; /* 入力しやすい大きさ */
-            resize: vertical;
-            font-family: inherit;
+            width: 100%; height: 100px; padding: 10px; margin: 12px 0; 
+            border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; 
+            font-size: 1.1rem; resize: vertical; font-family: inherit;
         }
+        
+        .modal-input { width: 100%; padding: 10px; margin: 8px 0 16px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
         
         .modal-btn { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: 700; font-size: 0.9rem; }
         .modal-btn.cancel { background-color: #eee; color: #666; }
         .modal-btn.save { background-color: var(--primary-work); color: #fff; }
         .modal-btn.danger { background-color: #d32f2f; color: #fff; }
 
-        #copyStatusMsg { background-color: var(--status-ok-bg); color: var(--status-ok-text); position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 2000; padding: 10px 20px; border-radius: 20px; display: none; box-shadow: var(--shadow-card); }
+        #copyStatusMsg { background-color: var(--status-ok-bg); color: var(--status-ok-text); position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 2000; padding: 10px 20px; border-radius: 20px; display: none; box-shadow: var(--shadow-card); white-space: pre-wrap; text-align: center; line-height: 1.4;}
     </style>
 </head>
 <body>
@@ -205,9 +212,10 @@
         </div>
         
         <div class="toolbar locked" id="mainToolbar">
-            <button class="tool-btn" id="noboriBtn">🚚 拠点積</button>
-            <button class="tool-btn" id="memoModeBtn">📝 メモ</button>
-            <button class="tool-btn" id="copyTextBtn">📋 連絡事項</button>
+            <button class="tool-btn" id="noboriBtn">● 拠点積</button>
+            <button class="tool-btn" id="memoModeBtn">📝 予定</button>
+            <button class="tool-btn" id="copyTextBtn">📋 出力</button>
+            <button class="tool-btn" id="settingsBtn">⚙️ 設定</button>
             <button class="tool-btn danger" id="resetAllBtn">♻️ リセット</button>
         </div>
 
@@ -220,6 +228,7 @@
         <div class="stats-bar locked" id="mainStatsBar">
             <div class="stat-item no-click"><label class="stat-label-count">所定日数</label><input type="number" id="requiredDaysInput" class="input-field"></div>
             <div class="stat-item" id="modeWork" data-mode="work"><span class="stat-label-count">出勤</span><span class="stat-value stat-work" id="workCount">0</span></div>
+            <div class="stat-item" id="modeWishLeave" data-mode="wish_leave"><span class="stat-label-count">希望休</span><span class="stat-value stat-wish">-</span></div>
             <div class="stat-item" id="modeLeave" data-mode="leave"><span class="stat-label-count">有休</span><span class="stat-value stat-leave" id="leaveCount">0</span></div>
             <div class="stat-item" id="modeOff" data-mode="off"><span class="stat-label-count">休日</span><span class="stat-value stat-off" id="offCount">0</span></div>
             <div class="stat-item" id="modePublicOff" data-mode="public_off"><span class="stat-label-count">法休</span><span class="stat-value stat-public-off" id="publicOffCount">0</span></div>
@@ -237,20 +246,37 @@
         <div class="calendar-grid" id="calendarGrid"></div>
     </div>
 
-    <div id="copyStatusMsg">コピーしました</div>
+    <div id="copyStatusMsg"></div>
 
-    <!-- メモ用モーダル (Textareaに変更) -->
+    <!-- メモ用モーダル -->
     <div class="modal-overlay" id="memoModal">
         <div class="modal-content">
             <div id="modalTitle" style="font-weight:700; margin-bottom:10px;"></div>
-            <textarea id="memoInput" class="modal-textarea" placeholder="メモを入力 (例：安全会議 etc)"></textarea>
+            <textarea id="memoInput" class="modal-textarea" placeholder="予定を入力 (例：安全会議 etc)"></textarea>
             <div style="display:flex;justify-content:flex-end;gap:8px;">
                 <button class="modal-btn cancel" id="memoCancelBtn">キャンセル</button>
                 <button class="modal-btn save" id="memoSaveBtn">保存</button>
             </div>
         </div>
     </div>
+
+    <!-- 設定用モーダル -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-content">
+            <h3 style="margin-top:0;">設定</h3>
+            <p style="font-size:0.8rem; color:#666;">出力時（メール送信）の宛先となる、配車係のメールアドレスを登録してください。</p>
+            <label style="font-size:0.85rem; font-weight:bold;">メールアドレス 1</label>
+            <input type="email" id="email1Input" class="modal-input" placeholder="例：haisha1@example.com">
+            <label style="font-size:0.85rem; font-weight:bold;">メールアドレス 2 (任意)</label>
+            <input type="email" id="email2Input" class="modal-input" placeholder="例：haisha2@example.com">
+            <div style="display:flex;justify-content:flex-end;gap:8px;">
+                <button class="modal-btn cancel" id="settingsCancelBtn">キャンセル</button>
+                <button class="modal-btn save" id="settingsSaveBtn">保存</button>
+            </div>
+        </div>
+    </div>
     
+    <!-- 確認用モーダル -->
     <div class="modal-overlay" id="confirmModal">
         <div class="modal-content">
             <h3>確認</h3>
@@ -258,6 +284,17 @@
             <div style="display:flex;justify-content:flex-end;gap:8px;">
                 <button class="modal-btn cancel" id="confirmCancelBtn">やめる</button>
                 <button class="modal-btn danger" id="confirmOkBtn">実行</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- メッセージアラート用モーダル -->
+    <div class="modal-overlay" id="alertModal">
+        <div class="modal-content">
+            <h3 id="alertTitle" style="margin-top:0; color:var(--status-error-text);">お知らせ</h3>
+            <div id="alertMessage" style="margin-bottom:20px; font-size:0.95rem; white-space:pre-wrap; line-height:1.4;"></div>
+            <div style="display:flex;justify-content:flex-end;">
+                <button class="modal-btn save" onclick="document.getElementById('alertModal').classList.remove('active')">OK</button>
             </div>
         </div>
     </div>
@@ -287,12 +324,20 @@
             requiredDays: JSON.parse(localStorage.getItem('requiredDaysData')) || {},
             notes: JSON.parse(localStorage.getItem('notesData')) || {},
             markers: JSON.parse(localStorage.getItem('markersData')) || {}, 
+            wishLeaves: JSON.parse(localStorage.getItem('wishLeavesData')) || {}, 
+            settings: JSON.parse(localStorage.getItem('settingsData')) || { email1: '', email2: '' }, 
             selectedMode: null,
             isLocked: true 
         };
 
         function formatDateKey(d) { return `${d.getFullYear()}-${('0'+(d.getMonth()+1)).slice(-2)}-${('0'+d.getDate()).slice(-2)}`; }
         function initDate() { const today = new Date(); if (today.getDate() <= 15) state.currentStartDate = new Date(today.getFullYear(), today.getMonth()-1, 16); else state.currentStartDate = new Date(today.getFullYear(), today.getMonth(), 16); }
+
+        function showAlert(msg, title = 'お知らせ') {
+            document.getElementById('alertTitle').textContent = title;
+            document.getElementById('alertMessage').textContent = msg;
+            document.getElementById('alertModal').classList.add('active');
+        }
 
         async function initFirebase() {
             try {
@@ -333,6 +378,8 @@
                     state.requiredDays = data.requiredDays || {};
                     state.notes = data.notes || {}; 
                     state.markers = data.markers || {};
+                    state.wishLeaves = data.wishLeaves || {};
+                    state.settings = data.settings || { email1: '', email2: '' };
                     render();
                     document.getElementById('syncStatus').className = 'sync-status saved';
                     document.getElementById('syncStatus').textContent = '同期中';
@@ -350,11 +397,23 @@
             localStorage.setItem('requiredDaysData', JSON.stringify(state.requiredDays));
             localStorage.setItem('notesData', JSON.stringify(state.notes));
             localStorage.setItem('markersData', JSON.stringify(state.markers));
+            localStorage.setItem('wishLeavesData', JSON.stringify(state.wishLeaves));
+            localStorage.setItem('settingsData', JSON.stringify(state.settings));
+            
             if (!isCloudActive || !user) return;
             const sid = document.getElementById('shareIdInput').value;
             if(!sid) return;
+            
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shifts', sid);
-            const data = { attendance: state.attendance, requiredDays: state.requiredDays, notes: state.notes, markers: state.markers, updatedAt: new Date().toISOString() };
+            const data = { 
+                attendance: state.attendance, 
+                requiredDays: state.requiredDays, 
+                notes: state.notes, 
+                markers: state.markers, 
+                wishLeaves: state.wishLeaves,
+                settings: state.settings,
+                updatedAt: new Date().toISOString() 
+            };
             if (saveTimeout) clearTimeout(saveTimeout);
             const doSave = () => { setDoc(docRef, data).catch(err => showError("保存エラー")); };
             if (immediate) doSave(); else saveTimeout = setTimeout(doSave, 800);
@@ -596,16 +655,14 @@
             document.getElementById('memoModeBtn').classList.toggle('active-tool', state.selectedMode==='memo');
         }
 
-        // --- 追加した関数: メモモーダルを開く ---
         function openMemoModal(dateKey) {
             currentMemoKey = dateKey;
             const existingNote = state.notes[dateKey] || "";
-            document.getElementById('modalTitle').textContent = `${dateKey} のメモ`;
+            document.getElementById('modalTitle').textContent = `${dateKey} の予定`;
             document.getElementById('memoInput').value = existingNote;
             document.getElementById('memoModal').classList.add('active');
             document.getElementById('memoInput').focus();
         }
-        // ------------------------------------
 
         function createDayCell(dateObj, holMap, isOutside, counts = null, todayKey = null, warningDates = new Set()) {
             const k = formatDateKey(dateObj);
@@ -613,11 +670,14 @@
             const hol = holMap[k];
             const n = state.notes[k];
             const m = state.markers[k];
+            const wl = state.wishLeaves[k];
             
             const cell = document.createElement('div'); 
             cell.className = 'day-cell';
             if (isOutside) cell.classList.add('outside-month');
             if (state.isLocked) cell.classList.add('locked'); 
+            
+            if (wl) cell.classList.add('is-wish-leave');
 
             const dWrap = document.createElement('div'); dWrap.style.display = "flex"; dWrap.style.alignItems = "center";
             const dNum = document.createElement('span'); 
@@ -657,10 +717,14 @@
                 resetAutoLockTimer(); 
 
                 if (state.selectedMode === 'memo') {
-                    // メモモードの場合はメモモーダルを開く
                     openMemoModal(k);
+                } else if (state.selectedMode === 'wish_leave') {
+                    if (state.wishLeaves[k]) delete state.wishLeaves[k];
+                    else state.wishLeaves[k] = true;
+                    save(); render();
                 } else if (state.selectedMode === 'nobori') {
-                    if (state.markers[k]) delete state.markers[k]; else state.markers[k] = true;
+                    if (state.markers[k]) delete state.markers[k]; 
+                    else state.markers[k] = true;
                     save(); render();
                 } else if (!isOutside) {
                     if (state.selectedMode) {
@@ -718,11 +782,26 @@
         document.getElementById('connectBtn').onclick = () => { const id = document.getElementById('shareIdInput').value; if(id) connect(id); };
         document.getElementById('requiredDaysInput').oninput = (e) => { const k=formatDateKey(state.currentStartDate); if(e.target.value) state.requiredDays[k]=parseInt(e.target.value); else delete state.requiredDays[k]; save(); render(); };
         
+        document.getElementById('settingsBtn').onclick = () => {
+            if (state.isLocked) return;
+            resetAutoLockTimer();
+            document.getElementById('email1Input').value = state.settings.email1 || '';
+            document.getElementById('email2Input').value = state.settings.email2 || '';
+            document.getElementById('settingsModal').classList.add('active');
+        };
+        document.getElementById('settingsCancelBtn').onclick = () => document.getElementById('settingsModal').classList.remove('active');
+        document.getElementById('settingsSaveBtn').onclick = () => {
+            state.settings.email1 = document.getElementById('email1Input').value.trim();
+            state.settings.email2 = document.getElementById('email2Input').value.trim();
+            save();
+            document.getElementById('settingsModal').classList.remove('active');
+        };
+
         document.getElementById('resetAllBtn').onclick = () => {
             if(state.isLocked) return; 
             resetAutoLockTimer();
             const endMonth = state.currentStartDate.getMonth() + 2 > 12 ? (state.currentStartDate.getMonth() + 2) - 12 : state.currentStartDate.getMonth() + 2;
-            document.getElementById('confirmMessage').textContent = `「${endMonth}月度」を初期状態（平日出勤・土日祝休み）にリセットしますか？\n（現在の入力内容は上書きされますが、メモは残ります）`;
+            document.getElementById('confirmMessage').textContent = `「${endMonth}月度」を初期状態（平日出勤・土日祝休み）にリセットしますか？\n（現在の入力内容は上書きされますが、予定と希望休は残ります）`;
             document.getElementById('confirmModal').classList.add('active');
             confirmCallback = () => {
                 const s = new Date(state.currentStartDate), e = new Date(s.getFullYear(), s.getMonth()+1, 15);
@@ -730,7 +809,6 @@
                 while(l <= e){
                     const k = formatDateKey(l);
                     delete state.attendance[k];
-                    // delete state.notes[k]; 
                     delete state.markers[k];
                     l.setDate(l.getDate()+1);
                 }
@@ -748,44 +826,88 @@
         document.getElementById('memoCancelBtn').onclick = () => document.getElementById('memoModal').classList.remove('active');
         document.getElementById('memoSaveBtn').onclick = () => { const v = document.getElementById('memoInput').value.trim(); if(v) state.notes[currentMemoKey] = v; else delete state.notes[currentMemoKey]; save(); render(); document.getElementById('memoModal').classList.remove('active'); };
         
-        // 連絡事項コピー機能（平日休み抽出・フォーマット変更）
-        document.getElementById('copyTextBtn').onclick = () => { 
+        // 出力機能（メール送信：強制リロード対策版）
+        document.getElementById('copyTextBtn').onclick = (e) => { 
+            e.preventDefault(); // デフォルトアクションの防止
+            if (state.isLocked) return;
+            resetAutoLockTimer();
+
             const s = new Date(state.currentStartDate);
-            const e = new Date(s.getFullYear(), s.getMonth()+1, 15);
+            const end = new Date(s.getFullYear(), s.getMonth()+1, 15);
             const weekChars = ['日','月','火','水','木','金','土'];
-            const holMap = Holidays.getMap(s, e);
+            const holMap = Holidays.getMap(s, end);
             
-            let text = `【${e.getMonth()+1}月度 休み】\n`; // タイトル変更
-            let count = 0;
+            let datesList = '';
             let loop = new Date(s);
             
-            while(loop <= e){ 
+            while(loop <= end){ 
                 const k = formatDateKey(loop); 
-                const day = loop.getDay();
-                // 土日(0,6)以外、かつ「出勤(work)」ではない日
-                if(day !== 0 && day !== 6 && state.attendance[k] !== 'work') { 
-                    count++;
-                    const hol = holMap[k] ? ` 祝日：${holMap[k]}` : ''; // 祝日表記変更
-                    text += `・${loop.getMonth()+1}/${loop.getDate()}(${weekChars[day]})${hol}\n`; // 中黒追加
+                if(state.wishLeaves[k]) { 
+                    const day = loop.getDay();
+                    const hol = holMap[k] ? ` 祝日：${holMap[k]}` : '';
+                    datesList += `・${loop.getMonth()+1}/${loop.getDate()}(${weekChars[day]})${hol}\n`; 
                 } 
                 loop.setDate(loop.getDate()+1); 
             } 
             
-            if(count === 0) text += "・平日のお休みはありません\n";
+            if(!datesList) {
+                showAlert("希望休が選択されていません。\n「希望休」モードで日付をタップして選択してください。");
+                return;
+            }
+
+            const email1 = state.settings.email1;
+            const email2 = state.settings.email2;
+            let toList = [];
+            if (email1) toList.push(email1);
+            if (email2) toList.push(email2);
+
+            if (toList.length === 0) {
+                showAlert("宛先のメールアドレスが設定されていません。\n「⚙️ 設定」ボタンから配車係のメールアドレスを登録してください。");
+                return;
+            }
+
+            const subject = `【希望休申請】${end.getMonth()+1}月度`;
+            const body = `お疲れ様です。\n下記にて、休みをいただきたく申請いたします。\n\n【${end.getMonth()+1}月度 】\n${datesList}\nお手数をおかけしますが、よろしくお願いいたします。`;
+
+            // 万が一のためのクリップボードへのコピー
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = body;
+            dummy.select();
+            document.execCommand("copy");
+            document.body.removeChild(dummy);
+
+            const mailtoUrl = `mailto:${toList.join(',')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
             
-            const dummy = document.createElement("textarea"); document.body.appendChild(dummy);
-            dummy.value = text; dummy.select(); document.execCommand("copy"); document.body.removeChild(dummy);
+            // aタグを使った新しいタブでの起動（リロード防止）
+            const a = document.createElement('a');
+            a.href = mailtoUrl;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            const msg = document.getElementById('copyStatusMsg');
+            msg.textContent = 'メールアプリを起動します\n（本文はコピー済みです）';
+            msg.style.display = 'block';
+            setTimeout(() => { msg.style.display = 'none'; }, 3000);
             
-            // メッセージ変更
-            const msg = document.getElementById('copyStatusMsg'); 
-            msg.textContent = '平日休みリストをコピーしました'; 
-            msg.style.display = 'block'; 
-            setTimeout(() => { msg.style.display = 'none'; }, 2000);
+            // アプリ内ブラウザの検知と警告
+            const ua = navigator.userAgent.toLowerCase();
+            if (ua.indexOf('line') > -1 || ua.indexOf('instagram') > -1) {
+                setTimeout(() => {
+                    showAlert("【重要】\nLINE等のアプリ内ブラウザではメールアプリが正常に起動せず、データが初期化される場合があります。\n\n右下（または右上）のメニューから「ブラウザで開く（Safari/Chrome等）」を選択してご利用ください。\n\n※メール本文はコピーされていますので、ご自身でメールアプリを開いて貼り付けることも可能です。");
+                }, 1500);
+            }
         };
 
-        ['Work','Leave','Off','PublicOff'].forEach(m => { const id = 'mode' + m, val = m.replace(/[A-Z]/g, l => '_' + l.toLowerCase()).replace(/^_/,''); document.getElementById(id).onclick = () => { state.selectedMode = (state.selectedMode === val) ? null : val; render(); }; });
+        ['Work','WishLeave','Leave','Off','PublicOff'].forEach(m => { 
+            const id = 'mode' + m;
+            const val = m.replace(/[A-Z]/g, l => '_' + l.toLowerCase()).replace(/^_/,''); 
+            document.getElementById(id).onclick = () => { state.selectedMode = (state.selectedMode === val) ? null : val; render(); }; 
+        });
 
-        // イベントリスナー登録 (自動ロックリセット用)
         ['mousedown', 'touchstart', 'keydown'].forEach(evt => 
             document.addEventListener(evt, resetAutoLockTimer)
         );
