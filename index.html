@@ -2,25 +2,25 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>勤務管理カレンダー v1.53 (セキュリティ・誤操作防止強化版)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>勤務管理カレンダー v1.63 (スマホ特化・エラー修正版)</title>
     <style>
         /* --- Google Fonts --- */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
 
         :root {
-            --bg-color: #f4f1ea;
+            --bg-color: #f0f2f5;
             --card-bg: #ffffff;
-            --text-main: #4a4a4a;
-            --text-sub: #8c8c8c;
-            --primary-work: #a7d7c5;      /* 出勤 */
+            --text-main: #333333;
+            --text-sub: #777777;
+            --primary-work: #a7d7c5;      
             --primary-work-dark: #7fb5a1; 
-            --accent-off: #ffb7b2;        /* 休日 */
-            --accent-public-off: #ef5350; /* 法休 */
+            --accent-off: #ffb7b2;        
+            --accent-public-off: #ef5350; 
             --accent-off-dark: #e08e89;
-            --accent-leave: #ffb74d;      /* 有休 */
+            --accent-leave: #ffb74d;      
             --accent-leave-dark: #f57c00;
-            --accent-wish: #b71c1c;       /* 希望休 (濃い赤) */
+            --accent-wish: #b71c1c;       
             
             --status-error-bg: #ffebee;
             --status-error-text: #c62828;
@@ -30,67 +30,85 @@
             --status-ok-text: #2e7d32;
             --status-sync-bg: #e3f2fd;
             --status-sync-text: #1565c0;
-            --shadow-card: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
-            --radius: 12px;
+            
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+            --shadow-fab: 0 6px 12px rgba(0,0,0,0.15);
         }
 
         body {
             font-family: 'Noto Sans JP', sans-serif;
-            background-color: var(--bg-color);
+            background-color: var(--bg-color); /* PC等で見た時の外側の色 */
             color: var(--text-main);
-            margin: 0; padding: 20px;
+            margin: 0; 
+            padding: 0;
             display: flex; justify-content: center; align-items: flex-start;
-            min-height: 100vh;
+            min-height: 100dvh;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .app-container {
             width: 100%; max-width: 600px;
-            background-color: var(--card-bg); border-radius: var(--radius);
-            box-shadow: var(--shadow-card); overflow: hidden;
+            background-color: var(--card-bg); 
             display: flex; flex-direction: column; position: relative;
+            min-height: 100dvh;
+            box-shadow: var(--shadow-md);
         }
 
-        /* 同期セクション */
-        .cloud-section { padding: 12px 24px; background-color: #f8f9fa; border-bottom: 1px solid #eee; display: flex; flex-direction: column; gap: 8px; }
-        .cloud-header { font-size: 0.85rem; font-weight: 700; color: var(--text-sub); display: flex; justify-content: space-between; align-items: center; }
-        .cloud-controls { display: flex; gap: 8px; }
-        .cloud-input { flex: 1; padding: 6px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; }
-        .cloud-btn { padding: 6px 12px; background-color: var(--text-sub); color: white; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
-        .cloud-btn:active { transform: scale(0.98); }
-        .cloud-btn.primary { background-color: var(--primary-work-dark); }
+        /* ヘッダーエリア */
+        .header { 
+            padding: 12px 16px; 
+            background-color: #fff; 
+            display: flex; justify-content: space-between; align-items: center; 
+            border-bottom: 1px solid #f0f0f0;
+            position: sticky; top: 0; z-index: 10;
+        }
+        .title-group { text-align: center; flex-grow: 1; display: flex; flex-direction: column; align-items: center; }
         
-        .sync-status { font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; background-color: #eee; color: #666; display: inline-flex; align-items: center; gap: 4px; }
-        .sync-status.active { background-color: var(--status-sync-bg); color: var(--status-sync-text); }
-        .sync-status.saved { background-color: var(--status-ok-bg); color: var(--status-ok-text); }
-        .sync-status.error { background-color: var(--status-error-bg); color: var(--status-error-text); }
+        .period-label-wrapper { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 2px; }
+        .period-label { font-size: 1.1rem; font-weight: 700; color: var(--primary-work-dark); margin: 0; }
+        
+        .pattern-switch { display: flex; background-color: #f0f0f0; border-radius: 12px; padding: 2px; }
+        .pattern-btn { border: none; background: transparent; padding: 4px 10px; font-size: 0.75rem; font-weight: 700; border-radius: 10px; cursor: pointer; color: #888; transition: all 0.2s; }
+        .pattern-btn.active { background-color: var(--primary-work-dark); color: #fff; box-shadow: var(--shadow-sm); }
 
-        /* ツールバー */
-        .toolbar { display: flex; gap: 8px; padding: 8px 24px; background-color: #fff; border-bottom: 1px solid #eee; overflow-x: auto; }
-        .tool-btn { flex: 1; white-space: nowrap; padding: 8px 12px; border: 1px solid #eee; border-radius: 6px; background-color: #fff; font-size: 0.85rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s; }
-        .tool-btn:hover { background-color: #f9f9f9; }
-        .tool-btn:active { background-color: #f0f0f0; }
-        .tool-btn.active-tool { background-color: #fff3e0; border-color: #ffb74d; color: #f57c00; }
-        .tool-btn.danger { color: #d32f2f; border-color: #ffcdd2; }
+        .month-title { font-size: 0.8rem; font-weight: 500; color: var(--text-sub); margin: 0; }
+        .nav-btn { background: none; border: none; cursor: pointer; width: 44px; height: 44px; border-radius: 50%; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--text-main); }
+        
+        /* 同期ステータス (ヘッダー内) */
+        .sync-status-main { font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; display: inline-block; background-color: #eee; color: #666; margin-top: 4px; font-weight: 700;}
+        .sync-status-main.active { background-color: var(--status-sync-bg); color: var(--status-sync-text); }
+        .sync-status-main.saved { background-color: var(--status-ok-bg); color: var(--status-ok-text); }
+        .sync-status-main.error { background-color: var(--status-error-bg); color: var(--status-error-text); }
+
+        /* ツールバー (横スクロール化して広く使う) */
+        .toolbar { 
+            display: flex; gap: 8px; padding: 10px 16px; background-color: #fff; 
+            border-bottom: 1px solid #f0f0f0; overflow-x: auto; 
+            scrollbar-width: none;
+        }
+        .toolbar::-webkit-scrollbar { display: none; }
+        .tool-btn { 
+            flex: 0 0 auto; white-space: nowrap; padding: 8px 14px; 
+            border: 1px solid #eee; border-radius: 20px; background-color: #fff; 
+            font-size: 0.8rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.2s; 
+        }
+        .tool-btn.active-tool { background-color: #fff3e0; border-color: #ffb74d; color: #f57c00; box-shadow: inset 0 0 0 1px #ffb74d;}
         .toolbar.locked .tool-btn { opacity: 0.5; pointer-events: none; }
 
-        /* ヘッダー & パターン切替 */
-        .header { padding: 16px 24px; background-color: #fff; display: flex; justify-content: space-between; align-items: center; }
-        .title-group { text-align: center; flex-grow: 1; display: flex; flex-direction: column; align-items: center; }
-        .period-label { font-size: 1.1rem; font-weight: 700; color: var(--primary-work-dark); margin-bottom: 4px; }
-        
-        .month-title-wrapper { display: flex; justify-content: center; align-items: center; gap: 12px; }
-        .month-title { font-size: 0.9rem; font-weight: 500; color: var(--text-sub); margin: 0; }
-        
-        /* A/Bボタンスタイル */
-        .pattern-switch { display: flex; background-color: #f0f0f0; border-radius: 12px; padding: 2px; }
-        .pattern-btn { border: none; background: transparent; padding: 4px 12px; font-size: 0.8rem; font-weight: 700; border-radius: 10px; cursor: pointer; color: #888; transition: all 0.2s; }
-        .pattern-btn.active { background-color: var(--primary-work-dark); color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
-
-        .nav-btn { background: none; border: none; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-
         /* 統計エリア */
-        .stats-bar { display: flex; justify-content: space-between; align-items: flex-end; padding: 12px 10px; background-color: #fff; border-bottom: 1px solid #eee; gap: 4px; overflow-x: auto; }
-        .stat-item { display: flex; flex-direction: column; align-items: center; padding: 6px 8px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; min-width: 40px; background-color: #fff; transition: all 0.2s; }
+        .stats-bar { 
+            display: flex; justify-content: space-between; align-items: flex-end; 
+            padding: 10px 8px; background-color: #fff; gap: 4px; overflow-x: auto; 
+            scrollbar-width: none;
+        }
+        .stats-bar::-webkit-scrollbar { display: none; }
+        
+        .stat-item { 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 6px 4px; border-radius: 8px; cursor: pointer; 
+            border: 2px solid transparent; flex: 1; min-width: 45px; background-color: #fff; transition: all 0.2s; 
+        }
         
         .stat-item[data-mode="work"] { border-color: var(--primary-work); }
         .stat-item[data-mode="wish_leave"] { border-color: var(--accent-wish); }
@@ -98,235 +116,321 @@
         .stat-item[data-mode="off"] { border-color: var(--accent-off); }
         .stat-item[data-mode="public_off"] { border-color: var(--accent-public-off); }
         
-        .stat-item[data-mode="work"].active-mode { background-color: #eaf7f2; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .stat-item[data-mode="wish_leave"].active-mode { background-color: #ffebee; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .stat-item[data-mode="leave"].active-mode { background-color: #fff8e1; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .stat-item[data-mode="off"].active-mode { background-color: #ffebee; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .stat-item[data-mode="public_off"].active-mode { background-color: #ffebee; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-color: #e57373; }
+        .stat-item[data-mode="work"].active-mode { background-color: #eaf7f2; }
+        .stat-item[data-mode="wish_leave"].active-mode { background-color: #ffebee; }
+        .stat-item[data-mode="leave"].active-mode { background-color: #fff8e1; }
+        .stat-item[data-mode="off"].active-mode { background-color: #ffebee; }
+        .stat-item[data-mode="public_off"].active-mode { background-color: #ffebee; border-color: #e57373; }
 
         .stat-item.no-click { cursor: default; border-color: #eee; }
-        .stats-bar.locked .stat-item:not(.no-click) { opacity: 0.6; pointer-events: none; border-color: #eee; background-color: transparent; }
+        .stats-bar.locked .stat-item:not(.no-click) { opacity: 0.5; border-color: transparent; }
 
-        .stat-label-count { font-size: 0.65rem; color: var(--text-main); font-weight: 700; white-space: nowrap; }
-        .stat-value { font-size: 1.1rem; font-weight: 700; line-height: 1.2; }
+        .stat-label-count { font-size: 0.6rem; color: var(--text-sub); font-weight: 700; white-space: nowrap; margin-bottom: 2px;}
+        .stat-value { font-size: 1rem; font-weight: 700; line-height: 1; }
         .stat-work { color: var(--primary-work-dark); }
         .stat-wish { color: var(--accent-wish); }
         .stat-off { color: var(--accent-off-dark); }
         .stat-public-off { color: #d32f2f; }
         .stat-leave { color: var(--accent-leave-dark); }
-        .input-field { width: 40px; text-align: center; border-radius: 6px; border: 1px solid #e0e0e0; font-weight: 700; }
 
-        /* バリデーション & 編集ロックエリア */
-        .validation-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 24px; background-color: #fafafa; border-top: 1px solid #eee; }
-        .total-days-display { font-weight: 700; color: var(--text-main); font-size: 0.85rem; }
-        .edit-switch { display: flex; background-color: #e0e0e0; border-radius: 20px; padding: 2px; }
-        .switch-btn { padding: 4px 12px; border-radius: 18px; border: none; font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.2s; color: #666; background: transparent; }
-        .switch-btn.active { background-color: #fff; color: var(--text-main); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .switch-btn.active.edit-mode { color: var(--primary-work-dark); }
+        /* バリデーション */
+        .validation-header { display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 4px 16px; background-color: #fff; }
+        .total-days-display { font-weight: 700; color: var(--text-main); font-size: 0.8rem; }
+        .validation-messages { padding: 0 16px 8px 16px; background-color: #fff; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid #f0f0f0;}
+        .error-message { color: var(--status-error-text); background-color: var(--status-error-bg); padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;}
+        .warn-message { color: var(--status-warn-text); background-color: var(--status-warn-bg); padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 6px; }
 
-        .validation-messages { padding: 0 24px 8px 24px; background-color: #fafafa; display: flex; flex-direction: column; gap: 4px; }
-        .error-message { color: var(--status-error-text); background-color: var(--status-error-bg); padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; }
-        .warn-message { color: var(--status-warn-text); background-color: var(--status-warn-bg); padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; }
-
-        /* カレンダー */
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding: 16px; }
-        .weekday { text-align: center; font-size: 0.8rem; color: var(--text-sub); margin-bottom: 8px; font-weight: 700; }
+        /* カレンダーグリッド */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 12px 8px 80px 8px; flex-grow: 1; align-content: flex-start; background-color: #f9f9f9;}
+        .weekday { text-align: center; font-size: 0.75rem; color: var(--text-sub); margin-bottom: 4px; font-weight: 700; }
         .weekday:nth-child(1) { color: #d32f2f; }
         .weekday:nth-child(7) { color: #1565c0; }
 
-        .day-cell { aspect-ratio: 1/1; border-radius: 8px; background-color: #f9f9f9; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 4px 2px; cursor: pointer; position: relative; font-weight: 500; overflow: hidden; transition: opacity 0.2s; }
+        .day-cell { aspect-ratio: 1/1; border-radius: 8px; background-color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 4px 2px; cursor: pointer; position: relative; font-weight: 500; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.02);}
         .day-cell.locked { cursor: default; }
 
         .day-cell.is-sun, .day-cell.is-holiday { color: #d32f2f !important; }
         .day-cell.is-sat { color: #1565c0; }
-        .day-cell.outside-month { opacity: 0.4; background-color: #fff; }
+        .day-cell.outside-month { opacity: 0.3; background-color: #f5f5f5; box-shadow: none;}
         
-        .day-cell.status-work { background-color: var(--primary-work); color: #fff; }
-        .day-cell.status-leave { background-color: var(--accent-leave); color: #fff; }
-        .day-cell.status-off { background-color: var(--accent-off); color: #fff; }
-        .day-cell.status-public-off { background-color: var(--accent-public-off); color: #fff; }
+        .day-cell.status-work { background-color: var(--primary-work); color: #fff; box-shadow: none;}
+        .day-cell.status-leave { background-color: var(--accent-leave); color: #fff; box-shadow: none;}
+        .day-cell.status-off { background-color: var(--accent-off); color: #fff; box-shadow: none;}
+        .day-cell.status-public-off { background-color: var(--accent-public-off); color: #fff; box-shadow: none;}
         
         .day-cell.is-holiday, .day-cell.is-sun { font-weight: 700; }
         .day-cell.is-today { border: 2px solid var(--text-sub); }
-        
-        /* 希望休の濃い赤枠 */
         .day-cell.is-wish-leave { box-shadow: inset 0 0 0 3px var(--accent-wish); }
 
-        /* 日付文字サイズ調整 */
-        .day-date { font-size: 0.85rem; font-weight: 700; margin-bottom: 1px; }
+        .day-date { font-size: 0.8rem; font-weight: 700; margin-bottom: 1px; }
 
-        /* のぼりマーク (●) サイズ調整 */
-        .nobori-mark { 
-            margin-left: 2px; 
-            font-size: 0.6rem; 
-            color: #4a4a4a; 
-            font-weight: normal; 
-        }
+        .nobori-mark { margin-left: 2px; font-size: 0.6rem; color: #4a4a4a; font-weight: normal; }
         .day-cell[class*="status-"] .nobori-mark { color: #fff; }
         .day-cell.is-holiday .nobori-mark, .day-cell.is-sun .nobori-mark { color: #d32f2f; }
 
-        .holiday-name { font-size: 0.5rem; line-height: 1; margin-top: 1px; text-align: center; color: #d32f2f; font-weight: 400; }
-        .status-label { font-size: 0.7rem; font-weight: 700; margin-top: 1px; }
+        .holiday-name { font-size: 0.45rem; line-height: 1.1; margin-top: 1px; text-align: center; color: #d32f2f; font-weight: 400; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        .status-label { font-size: 0.6rem; font-weight: 700; margin-top: 1px; }
         
-        /* メモ表示 */
-        .note-text { 
-            font-size: 0.9rem; 
-            margin-top: 2px; 
-            white-space: nowrap; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
-            max-width: 98%; 
-            font-weight: 700; 
-            opacity: 1; 
-            color: #333;
-            line-height: 1.1;
-        }
-        .day-cell[class*="status-"] .note-text { color: #fff; }
+        /* メモはアイコン化 */
+        .note-indicator { font-size: 0.75rem; margin-top: 1px; }
 
-        /* 警告アイコン */
-        .warning-icon { 
-            position: absolute; bottom: 2px; right: 2px; 
-            font-size: 0.9rem; color: #ff9800; text-shadow: 0 1px 2px rgba(0,0,0,0.2); 
-            animation: pulse 2s infinite; 
-        }
+        .warning-icon { position: absolute; bottom: 2px; right: 2px; font-size: 0.8rem; color: #ff9800; text-shadow: 0 1px 2px rgba(0,0,0,0.2); animation: pulse 2s infinite; }
         @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0.8; } }
 
-        /* モーダル */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
-        .modal-overlay.active { display: flex; }
-        .modal-content { background: #fff; padding: 24px; border-radius: 12px; width: 85%; max-width: 350px; }
-        
-        .modal-textarea { 
-            width: 100%; height: 100px; padding: 10px; margin: 12px 0; 
-            border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; 
-            font-size: 1.1rem; resize: vertical; font-family: inherit;
+        /* フローティング編集スイッチ (右下固定) */
+        .floating-edit-switch {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 900;
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(4px);
+            border-radius: 30px;
+            box-shadow: var(--shadow-fab);
+            padding: 4px;
+            display: flex;
+            border: 1px solid #e0e0e0;
         }
-        
-        .modal-input { width: 100%; padding: 10px; margin: 8px 0 16px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
-        
-        .modal-btn { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: 700; font-size: 0.9rem; }
-        .modal-btn.cancel { background-color: #eee; color: #666; }
-        .modal-btn.save { background-color: var(--primary-work); color: #fff; }
-        .modal-btn.danger { background-color: #d32f2f; color: #fff; }
+        .fab-btn {
+            padding: 10px 16px; border-radius: 20px; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s; color: #888; background: transparent; display: flex; align-items: center; gap: 4px;
+        }
+        .fab-btn.active { background-color: var(--primary-work-dark); color: #fff; box-shadow: var(--shadow-sm); }
+        .fab-btn.active-lock { background-color: #e0e0e0; color: #555; }
 
-        #copyStatusMsg { background-color: var(--status-ok-bg); color: var(--status-ok-text); position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 2000; padding: 10px 20px; border-radius: 20px; display: none; box-shadow: var(--shadow-card); white-space: pre-wrap; text-align: center; line-height: 1.4;}
+        /* モーダル共通 (ボトムシート風) */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: flex-end; z-index: 1000; }
+        .modal-overlay.active { display: flex; }
+        .modal-content { 
+            background: #fff; padding: 24px 20px 40px 20px; 
+            border-radius: 20px 20px 0 0; width: 100%; max-width: 600px; 
+            max-height: 90vh; overflow-y: auto;
+            animation: slideUp 0.3s ease-out;
+            box-sizing: border-box;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        
+        .modal-textarea { width: 100%; height: 100px; padding: 12px; margin: 12px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; resize: vertical; font-family: inherit; }
+        .modal-input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; background-color: #fafafa;}
+        
+        .modal-btn { padding: 12px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; gap: 6px;}
+        .modal-btn.cancel { background-color: #f0f0f0; color: #666; }
+        .modal-btn.save { background-color: var(--primary-work-dark); color: #fff; flex: 1;}
+        .modal-btn.danger { background-color: #ffebee; color: #d32f2f; border: 1px solid #ffcdd2;}
+
+        /* 設定画面内のスタイル */
+        .settings-section { margin-bottom: 20px; }
+        .settings-section h4 { margin: 0 0 10px 0; font-size: 0.9rem; color: var(--primary-work-dark); display: flex; align-items: center; gap: 6px;}
+        .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px;}
+        .settings-label { font-size: 0.85rem; font-weight: 700; color: var(--text-main); flex-shrink: 0; min-width: 80px;}
+
+        #copyStatusMsg { background-color: rgba(46, 125, 50, 0.9); color: white; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 2000; padding: 12px 24px; border-radius: 30px; display: none; box-shadow: var(--shadow-md); font-weight: 700; font-size: 0.9rem;}
     </style>
 </head>
 <body>
     <div class="app-container">
-        <div class="cloud-section">
-            <div class="cloud-header"><span>☁️ データ同期設定</span><span id="syncStatus" class="sync-status">オフライン</span></div>
-            <div class="cloud-controls">
-                <input type="text" id="shareIdInput" class="cloud-input" placeholder="ID (例：Yamada等)">
-                <input type="password" id="passwordInput" class="cloud-input" placeholder="パスワード">
-            </div>
-            <div class="cloud-controls" style="margin-top: 4px;">
-                <button id="registerBtn" class="cloud-btn primary" style="flex: 1;">新規登録</button>
-                <button id="connectBtn" class="cloud-btn" style="flex: 1;">読込</button>
-            </div>
-            <div id="debugError" style="font-size: 10px; color: red; margin-top: 4px; display: none;"></div>
-        </div>
         
-        <div class="toolbar locked" id="mainToolbar">
-            <button class="tool-btn" id="noboriBtn">● 拠点積</button>
-            <button class="tool-btn" id="memoModeBtn">📝 予定</button>
-            <button class="tool-btn" id="copyTextBtn">📋 出力</button>
-            <button class="tool-btn" id="settingsBtn">⚙️ 設定</button>
-            <button class="tool-btn danger" id="resetAllBtn">♻️ リセット</button>
-        </div>
-
+        <!-- 月度ヘッダー -->
         <div class="header">
             <button class="nav-btn" id="prevBtn">❮</button>
             <div class="title-group">
-                <div class="period-label" id="periodLabel"></div>
-                <div class="month-title-wrapper">
-                    <h2 class="month-title" id="currentPeriodDisplay">読み込み中...</h2>
+                <div class="period-label-wrapper">
+                    <div class="period-label" id="periodLabel"></div>
                     <div class="pattern-switch">
                         <button class="pattern-btn" id="patternA">A</button>
                         <button class="pattern-btn" id="patternB">B</button>
                     </div>
                 </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <h2 class="month-title" id="currentPeriodDisplay">読み込み中...</h2>
+                    <div id="mainSyncStatus" class="sync-status-main">オフライン</div>
+                </div>
             </div>
             <button class="nav-btn" id="nextBtn">❯</button>
         </div>
 
-        <div class="stats-bar locked" id="mainStatsBar">
-            <div class="stat-item no-click"><label class="stat-label-count">所定日数</label><input type="number" id="requiredDaysInput" class="input-field"></div>
-            <div class="stat-item" id="modeWork" data-mode="work"><span class="stat-label-count">出勤</span><span class="stat-value stat-work" id="workCount">0</span></div>
-            <div class="stat-item" id="modeWishLeave" data-mode="wish_leave"><span class="stat-label-count">希望休</span><span class="stat-value stat-wish">-</span></div>
-            <div class="stat-item" id="modeLeave" data-mode="leave"><span class="stat-label-count">有休</span><span class="stat-value stat-leave" id="leaveCount">0</span></div>
-            <div class="stat-item" id="modeOff" data-mode="off"><span class="stat-label-count">休日</span><span class="stat-value stat-off" id="offCount">0</span></div>
-            <div class="stat-item" id="modePublicOff" data-mode="public_off"><span class="stat-label-count">法休</span><span class="stat-value stat-public-off" id="publicOffCount">0</span></div>
+        <!-- ツールバー (設定メニュー内に移動したものを除外) -->
+        <div class="toolbar locked" id="mainToolbar">
+            <button class="tool-btn" id="noboriBtn">🚚 拠点積</button>
+            <button class="tool-btn" id="memoModeBtn">📝 予定</button>
+            <button class="tool-btn" id="copyTextBtn">📋 連絡事項出力</button>
+            <button class="tool-btn" id="settingsBtn">⚙️ 設定</button>
         </div>
 
+        <!-- 統計エリア -->
+        <div class="stats-bar locked" id="mainStatsBar">
+            <div class="stat-item no-click" style="cursor: default;">
+                <span class="stat-label-count">所定</span>
+                <span class="stat-value" id="requiredDaysDisplay">-</span>
+            </div>
+            <div class="stat-item" id="modeWork" data-mode="work">
+                <span class="stat-label-count">出勤</span><span class="stat-value stat-work" id="workCount">0</span>
+            </div>
+            <div class="stat-item" id="modeWishLeave" data-mode="wish_leave">
+                <span class="stat-label-count">希望休</span><span class="stat-value stat-wish">-</span>
+            </div>
+            <div class="stat-item" id="modeLeave" data-mode="leave">
+                <span class="stat-label-count">有休</span><span class="stat-value stat-leave" id="leaveCount">0</span>
+            </div>
+            <div class="stat-item" id="modeOff" data-mode="off">
+                <span class="stat-label-count">休日</span><span class="stat-value stat-off" id="offCount">0</span>
+            </div>
+            <div class="stat-item" id="modePublicOff" data-mode="public_off">
+                <span class="stat-label-count">法休</span><span class="stat-value stat-public-off" id="publicOffCount">0</span>
+            </div>
+        </div>
+
+        <!-- 全体日数と有休表示 -->
         <div class="validation-header">
-            <div class="total-days-display" id="totalDaysDisplay"></div>
-            <div class="edit-switch">
-                <button class="switch-btn" id="lockBtn">ロック</button>
-                <button class="switch-btn" id="editBtn">編集</button>
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%;">
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                    <div class="total-days-display" id="totalDaysDisplay"></div>
+                    <div id="leaveUsageDisplay" style="font-size: 0.75rem; font-weight: 700; color: var(--accent-leave-dark); display: none;"></div>
+                </div>
             </div>
         </div>
         <div class="validation-messages" id="statusMessageContainer"></div>
 
+        <!-- カレンダー -->
         <div class="calendar-grid" id="calendarGrid"></div>
+        
+        <!-- フローティング ロック/編集 スイッチ -->
+        <div class="floating-edit-switch" id="floatingEditSwitch">
+            <button class="fab-btn active-lock" id="lockBtn">🔒 閲覧</button>
+            <button class="fab-btn" id="editBtn">✏️ 編集</button>
+        </div>
     </div>
 
+    <!-- コピー完了メッセージ -->
     <div id="copyStatusMsg"></div>
 
     <!-- メモ用モーダル -->
     <div class="modal-overlay" id="memoModal">
-        <div class="modal-content">
-            <div id="modalTitle" style="font-weight:700; margin-bottom:10px;"></div>
-            <textarea id="memoInput" class="modal-textarea" placeholder="予定を入力 (例：安全会議 etc)"></textarea>
-            <div style="display:flex;justify-content:flex-end;gap:8px;">
-                <button class="modal-btn cancel" id="memoCancelBtn">キャンセル</button>
-                <button class="modal-btn save" id="memoSaveBtn">保存</button>
+        <div class="modal-content" style="max-height: 50vh;">
+            <div id="modalTitle" style="font-weight:700; margin-bottom:10px; font-size:1.1rem; color:var(--primary-work-dark)"></div>
+            <textarea id="memoInput" class="modal-textarea" placeholder="予定やメモを入力 (例: 早番, 13-22, リーダー など)"></textarea>
+            <div style="display:flex;justify-content:flex-end;gap:12px;">
+                <button class="modal-btn cancel" id="memoCancelBtn">閉じる</button>
+                <button class="modal-btn save" id="memoSaveBtn">保存する</button>
             </div>
         </div>
     </div>
 
-    <!-- 設定用モーダル -->
-    <div class="modal-overlay" id="settingsModal">
-        <div class="modal-content">
-            <h3 style="margin-top:0;">設定</h3>
-            <p style="font-size:0.8rem; color:#666;">出力時（メール送信）の宛先となる、配車係のメールアドレスと、件名に表示するお名前を登録してください。</p>
-            <label style="font-size:0.85rem; font-weight:bold;">あなたのお名前（件名に表示）</label>
-            <input type="text" id="senderNameInput" class="modal-input" placeholder="例：山田 太郎">
-            <label style="font-size:0.85rem; font-weight:bold;">メールアドレス 1</label>
-            <input type="email" id="email1Input" class="modal-input" placeholder="例：haisha1@example.com">
-            <label style="font-size:0.85rem; font-weight:bold;">メールアドレス 2 (任意)</label>
-            <input type="email" id="email2Input" class="modal-input" placeholder="例：haisha2@example.com">
-            <div style="display:flex;justify-content:flex-end;gap:8px;">
-                <button class="modal-btn cancel" id="settingsCancelBtn">キャンセル</button>
-                <button class="modal-btn save" id="settingsSaveBtn">保存</button>
+    <!-- 設定用モーダル (ボトムシート) -->
+    <div class="modal-overlay" id="settingsModal" style="align-items: flex-start; padding-top: 4vh; overflow-y: auto;">
+        <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+                <h3 style="margin:0; font-size: 1.2rem;">設定</h3>
+                <button class="modal-btn cancel" style="padding: 6px 12px; margin:0;" id="settingsCloseIconBtn">✕</button>
             </div>
             
-            <div style="margin-top:20px; padding-top:15px; border-top: 1px solid #eee;">
-                <p style="font-size:0.8rem; color:#d32f2f; font-weight:bold; margin-bottom: 8px;">データ管理</p>
-                <button class="modal-btn danger" id="allClearBtn" style="width: 100%;">すべてのデータを初期化</button>
+            <!-- 同期設定 -->
+            <div class="settings-section">
+                <h4>☁️ データ共有・同期</h4>
+                <p style="font-size:0.75rem; color:#666; margin-bottom:10px;">他の端末とカレンダーを共有するためのIDと鍵です。</p>
+                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                    <input type="text" id="shareIdInput" class="modal-input" placeholder="共有ID" style="flex: 1;">
+                    <input type="password" id="passwordInput" class="modal-input" placeholder="パスワード" style="flex: 1;">
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button id="registerBtn" class="modal-btn" style="flex:1; background-color:#e3f2fd; color:#1565c0; border: 1px solid #bbdefb;">新規登録</button>
+                    <button id="connectBtn" class="modal-btn" style="flex:1; background-color:#e8f5e9; color:#2e7d32; border: 1px solid #c8e6c9;">読込する</button>
+                </div>
+                <div id="debugError" style="font-size: 10px; color: red; margin-top: 4px; display: none;"></div>
+            </div>
+
+            <hr style="border:none; border-top:1px solid #eee; margin:20px 0;">
+            
+            <!-- メール設定 -->
+            <div class="settings-section">
+                <h4>✉️ メール出力設定</h4>
+                <div style="margin-bottom: 12px;">
+                    <label class="settings-label">差出人名</label>
+                    <input type="text" id="senderNameInput" class="modal-input" placeholder="例：山田 太郎" style="margin-top: 4px;">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label class="settings-label">配車係アドレス 1</label>
+                    <input type="email" id="email1Input" class="modal-input" placeholder="例：haisha1@example.com" style="margin-top: 4px;">
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <label class="settings-label">配車係アドレス 2 (任意)</label>
+                    <input type="email" id="email2Input" class="modal-input" placeholder="例：haisha2@example.com" style="margin-top: 4px;">
+                </div>
+            </div>
+            
+            <hr style="border:none; border-top:1px solid #eee; margin:20px 0;">
+            
+            <!-- 有給休暇 -->
+            <div class="settings-section">
+                <h4>🏖️ 年次有給休暇</h4>
+                <div class="settings-row">
+                    <label class="settings-label">付与日数</label>
+                    <div style="display:flex; align-items:center; gap:4px;">
+                        <input type="number" id="leaveDaysInput" class="modal-input" style="width: 80px; text-align:right;" placeholder="40"> <span>日</span>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <label class="settings-label">基準日</label>
+                    <div style="display:flex; align-items:center; gap:4px;">
+                        <select id="leaveBaseMonthInput" class="modal-input" style="width: 70px;"></select> <span>月</span>
+                        <select id="leaveBaseDayInput" class="modal-input" style="width: 70px;"></select> <span>日</span>
+                    </div>
+                </div>
+            </div>
+
+            <hr style="border:none; border-top:1px solid #eee; margin:20px 0;">
+
+            <!-- 所定日数 -->
+            <div class="settings-section">
+                <h4>📅 所定日数の一括設定</h4>
+                <select id="yearSelect" class="modal-input" style="margin-bottom: 12px; font-weight:700;">
+                    <option value="2025">2025年度 (25年4月度〜26年3月度)</option>
+                    <option value="2026">2026年度 (26年4月度〜27年3月度)</option>
+                    <option value="2027">2027年度 (27年4月度〜28年3月度)</option>
+                    <option value="2028">2028年度 (28年4月度〜29年3月度)</option>
+                    <option value="2029">2029年度 (29年4月度〜30年3月度)</option>
+                    <option value="2030">2030年度 (30年4月度〜31年3月度)</option>
+                </select>
+                <div id="requiredDaysFormGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <!-- JSで動的生成 -->
+                </div>
+            </div>
+
+            <hr style="border:none; border-top:1px solid #eee; margin:20px 0;">
+            
+            <!-- データ管理 -->
+            <div class="settings-section">
+                <h4 style="color:#d32f2f;">⚠️ データ管理</h4>
+                <div style="display:flex; gap:8px;">
+                    <button class="modal-btn danger" id="resetAllBtn" style="flex:1; font-size:0.8rem; padding:10px;">表示月をリセット</button>
+                    <button class="modal-btn danger" id="allClearBtn" style="flex:1; font-size:0.8rem; padding:10px;">全データ初期化</button>
+                </div>
+            </div>
+
+            <div style="display:flex; gap:12px; margin-top:30px;">
+                <button class="modal-btn save" id="settingsSaveBtn">設定を保存して閉じる</button>
             </div>
         </div>
     </div>
     
     <!-- 確認用モーダル -->
     <div class="modal-overlay" id="confirmModal">
-        <div class="modal-content">
-            <h3>確認</h3>
-            <div id="confirmMessage" style="margin-bottom:15px; font-size:0.9rem; white-space:pre-wrap;"></div>
-            <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <div class="modal-content" style="max-height: 40vh;">
+            <h3 style="margin-top:0;">最終確認</h3>
+            <div id="confirmMessage" style="margin-bottom:20px; font-size:0.95rem; line-height:1.4;"></div>
+            <div style="display:flex;justify-content:flex-end;gap:12px;">
                 <button class="modal-btn cancel" id="confirmCancelBtn">やめる</button>
-                <button class="modal-btn danger" id="confirmOkBtn">実行</button>
+                <button class="modal-btn danger" id="confirmOkBtn" style="flex:1;">実行する</button>
             </div>
         </div>
     </div>
 
     <!-- メッセージアラート用モーダル -->
     <div class="modal-overlay" id="alertModal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-height: 40vh;">
             <h3 id="alertTitle" style="margin-top:0; color:var(--status-error-text);">お知らせ</h3>
-            <div id="alertMessage" style="margin-bottom:20px; font-size:0.95rem; white-space:pre-wrap; line-height:1.4;"></div>
-            <div style="display:flex;justify-content:flex-end;">
-                <button class="modal-btn save" onclick="document.getElementById('alertModal').classList.remove('active')">OK</button>
+            <div id="alertMessage" style="margin-bottom:24px; font-size:0.95rem; white-space:pre-wrap; line-height:1.5;"></div>
+            <div style="display:flex;">
+                <button class="modal-btn save" onclick="document.getElementById('alertModal').classList.remove('active')" style="width:100%;">OK</button>
             </div>
         </div>
     </div>
@@ -350,6 +454,7 @@
         let db, auth, user, unsubscribeDoc = null, isCloudActive = false, saveTimeout = null, confirmCallback = null, currentMemoKey = null;
         let autoLockTimer = null;
 
+        // localStorageから安全にパースするための関数
         function safeParse(key, defaultValue) {
             try {
                 const item = localStorage.getItem(key);
@@ -360,6 +465,7 @@
             }
         }
 
+        // A/Bパターン・パスワード対応のState構造
         const state = {
             currentStartDate: new Date(),
             currentPattern: localStorage.getItem('currentPattern') || 'A',
@@ -374,12 +480,13 @@
             requiredDays: safeParse('requiredDaysData', {}),
             notes: safeParse('notesData', {}),
             wishLeaves: safeParse('wishLeavesData', {}), 
-            settings: safeParse('settingsData', { email1: '', email2: '', senderName: '' }), 
+            settings: safeParse('settingsData', { email1: '', email2: '', senderName: '', leaveDays: 0, leaveBaseMonth: 4, leaveBaseDay: 1 }), 
             
             selectedMode: null,
             isLocked: true 
         };
 
+        // 現在のパターンに応じたデータを返すヘルパー関数
         const getAtt = () => state.currentPattern === 'A' ? state.attendance : state.attendance_B;
         const getMar = () => state.currentPattern === 'A' ? state.markers : state.markers_B;
 
@@ -390,6 +497,14 @@
             document.getElementById('alertTitle').textContent = title;
             document.getElementById('alertMessage').textContent = msg;
             document.getElementById('alertModal').classList.add('active');
+        }
+
+        function updateSyncStatus(text, statusClass) {
+            const mainEl = document.getElementById('mainSyncStatus');
+            if(mainEl) { 
+                mainEl.textContent = text; 
+                mainEl.className = `sync-status-main ${statusClass}`; 
+            }
         }
 
         async function initFirebase() {
@@ -419,124 +534,114 @@
         function showError(msg) {
             const el = document.getElementById('debugError');
             el.textContent = msg; el.style.display = 'block';
-            document.getElementById('syncStatus').textContent = "エラー";
-            document.getElementById('syncStatus').className = "sync-status error";
+            updateSyncStatus("エラー", "error");
         }
 
-        // 新規登録ボタンの処理（確認メッセージ付き）
-        document.getElementById('registerBtn').onclick = () => {
+        const safeAddEventListener = (id, event, handler) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener(event, handler);
+        };
+
+        // 自動ロック関数
+        function resetAutoLockTimer() {
+            clearTimeout(autoLockTimer);
+            if (!state.isLocked) {
+                autoLockTimer = setTimeout(() => {
+                    state.isLocked = true;
+                    state.selectedMode = null;
+                    render();
+                }, 10 * 60 * 1000); 
+            }
+        }
+
+        safeAddEventListener('registerBtn', 'click', async () => {
             const sid = document.getElementById('shareIdInput').value.trim();
             const pwd = document.getElementById('passwordInput').value.trim();
-            if (!sid || !pwd) { 
-                showAlert("IDとパスワードの両方を入力してください。"); 
-                return; 
-            }
+            if (!sid || !pwd) { showAlert("IDとパスワードの両方を入力してください。"); return; }
             if (!user || !db) return;
 
-            document.getElementById('confirmMessage').textContent = `ID「${sid}」で新しくカレンダーを作成しますか？\n\n※すでに登録済みのIDを開く場合は、このボタンではなく「読込」ボタンを押してください。`;
+            document.getElementById('confirmMessage').textContent = `ID「${sid}」で新しくカレンダーを作成しますか？\n\n※すでに登録済みのIDを開く場合は「読込する」ボタンを押してください。`;
+            document.getElementById('settingsModal').classList.remove('active');
             document.getElementById('confirmModal').classList.add('active');
             
             confirmCallback = async () => {
                 if (unsubscribeDoc) unsubscribeDoc();
-                document.getElementById('syncStatus').textContent = "確認中...";
-                document.getElementById('syncStatus').className = "sync-status active";
+                updateSyncStatus("確認中...", "active");
 
                 try {
                     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shifts', sid);
                     const docSnap = await getDoc(docRef);
                     
                     if (docSnap.exists()) {
-                        showAlert("このIDは既に他の人に使用されています。\n別のIDを指定してください。\n（ご自身のIDを読み込む場合は「読込」ボタンを使用してください）");
-                        document.getElementById('syncStatus').textContent = "エラー";
-                        document.getElementById('syncStatus').className = "sync-status error";
+                        showAlert("このIDは既に他の人に使用されています。\n別のIDを指定してください。");
+                        updateSyncStatus("エラー", "error");
+                        document.getElementById('settingsModal').classList.add('active'); 
                     } else {
                         isCloudActive = true; 
                         localStorage.setItem('lastShareId', sid);
                         localStorage.setItem('lastPassword', pwd);
                         state.password = pwd;
                         
-                        // 新規登録時はローカルデータを初期化して空からスタート
-                        state.attendance = {};
-                        state.markers = {};
-                        state.attendance_B = {};
-                        state.markers_B = {};
-                        state.requiredDays = {};
-                        state.notes = {};
-                        state.wishLeaves = {};
-                        state.settings = { email1: '', email2: '', senderName: '' };
+                        state.attendance = {}; state.markers = {}; state.attendance_B = {}; state.markers_B = {};
+                        state.requiredDays = {}; state.notes = {}; state.wishLeaves = {};
                         
                         const data = { 
-                            password: pwd, 
-                            attendance: state.attendance, 
-                            markers: state.markers, 
-                            attendance_B: state.attendance_B,
-                            markers_B: state.markers_B,
-                            requiredDays: state.requiredDays, 
-                            notes: state.notes, 
-                            wishLeaves: state.wishLeaves,
-                            settings: state.settings,
-                            updatedAt: new Date().toISOString() 
+                            password: pwd, attendance: state.attendance, markers: state.markers, attendance_B: state.attendance_B,
+                            markers_B: state.markers_B, requiredDays: state.requiredDays, notes: state.notes, wishLeaves: state.wishLeaves,
+                            settings: state.settings, updatedAt: new Date().toISOString() 
                         };
                         await setDoc(docRef, data);
-                        showAlert(`ID「${sid}」で新しく登録しました！\nこのIDとパスワードは他の端末から開く際にも必要です。`);
+                        showAlert(`ID「${sid}」で新しく登録しました！`);
                         connect(sid);
                     }
                 } catch(e) {
                     showError("エラー: " + e.message);
                 }
             };
-        };
+        });
 
-        // 読込ボタンの処理（厳密なパスワードチェック）
-        document.getElementById('connectBtn').onclick = async () => {
+        safeAddEventListener('connectBtn', 'click', async () => {
             const sid = document.getElementById('shareIdInput').value.trim();
             const pwd = document.getElementById('passwordInput').value.trim();
-            if (!sid || !pwd) { 
-                showAlert("IDとパスワードの両方を入力してください。"); 
-                return; 
-            }
+            if (!sid || !pwd) { showAlert("IDとパスワードの両方を入力してください。"); return; }
             if (!user || !db) return;
 
             if (unsubscribeDoc) unsubscribeDoc();
-            document.getElementById('syncStatus').textContent = "確認中...";
-            document.getElementById('syncStatus').className = "sync-status active";
+            updateSyncStatus("確認中...", "active");
 
             try {
                 const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shifts', sid);
                 const docSnap = await getDoc(docRef);
                 
                 if (!docSnap.exists()) {
-                    showAlert("登録されていないIDです。\nIDに間違いがないか確認してください。\n初めての場合は「新規登録」を押してください。");
-                    document.getElementById('syncStatus').textContent = "エラー";
-                    document.getElementById('syncStatus').className = "sync-status error";
+                    showAlert("登録されていないIDです。\nIDに間違いがないか確認してください。");
+                    updateSyncStatus("エラー", "error");
                 } else {
                     const data = docSnap.data();
-                    const serverPwd = data.password || ""; // サーバー側のパスワード
+                    const serverPwd = data.password || ""; 
                     
-                    // パスワードが完全一致しないと弾く
                     if (serverPwd !== pwd) {
-                        showAlert("パスワードが間違っています。\n正しいパスワードを入力してください。");
-                        document.getElementById('syncStatus').textContent = "エラー";
-                        document.getElementById('syncStatus').className = "sync-status error";
+                        showAlert("パスワードが間違っています。");
+                        updateSyncStatus("エラー", "error");
                         return;
                     }
                     
                     localStorage.setItem('lastPassword', pwd);
                     state.password = pwd;
                     connect(sid);
+                    document.getElementById('settingsModal').classList.remove('active');
                 }
             } catch(e) {
                 showError("エラー: " + e.message);
             }
-        };
+        });
 
         function connect(sid) {
             if (!user || !db || !sid) return;
             if (unsubscribeDoc) unsubscribeDoc();
             isCloudActive = true; localStorage.setItem('lastShareId', sid);
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shifts', sid);
-            document.getElementById('syncStatus').textContent = "接続中...";
-            document.getElementById('syncStatus').className = "sync-status active";
+            updateSyncStatus("接続中...", "active");
             
             unsubscribeDoc = onSnapshot(docRef, (snap) => {
                 if (snap.metadata.hasPendingWrites) return;
@@ -544,33 +649,25 @@
                     const data = snap.data();
                     const serverPwd = data.password || "";
                     
-                    // 自動接続時などでパスワードが一致しない場合は弾く（他端末での不正変更防止等）
                     if (state.password !== serverPwd) {
                         isCloudActive = false;
                         if (unsubscribeDoc) unsubscribeDoc();
                         showAlert("パスワードの認証に失敗しました。\n正しいパスワードを入力して「読込」をやり直してください。");
-                        document.getElementById('syncStatus').className = 'sync-status error';
-                        document.getElementById('syncStatus').textContent = '認証エラー';
+                        updateSyncStatus("認証エラー", "error");
                         return;
                     }
 
-                    state.attendance = data.attendance || {}; 
-                    state.markers = data.markers || {};
-                    state.attendance_B = data.attendance_B || {}; 
-                    state.markers_B = data.markers_B || {};
-                    
-                    state.requiredDays = data.requiredDays || {};
-                    state.notes = data.notes || {}; 
+                    state.attendance = data.attendance || {}; state.markers = data.markers || {};
+                    state.attendance_B = data.attendance_B || {}; state.markers_B = data.markers_B || {};
+                    state.requiredDays = data.requiredDays || {}; state.notes = data.notes || {}; 
                     state.wishLeaves = data.wishLeaves || {};
-                    state.settings = data.settings || { email1: '', email2: '', senderName: '' };
+                    state.settings = data.settings || { email1: '', email2: '', senderName: '', leaveDays: 0, leaveBaseMonth: 4, leaveBaseDay: 1 };
                     render();
-                    document.getElementById('syncStatus').className = 'sync-status saved';
-                    document.getElementById('syncStatus').textContent = '同期中';
+                    updateSyncStatus("🟢同期中", "saved");
                     document.getElementById('debugError').style.display = 'none';
                 } else { 
                     isCloudActive = false;
-                    document.getElementById('syncStatus').className = 'sync-status error';
-                    document.getElementById('syncStatus').textContent = 'データなし';
+                    updateSyncStatus("データなし", "error");
                 }
             }, (err) => { 
                 showError("通信エラー: " + err.code); 
@@ -596,30 +693,15 @@
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shifts', sid);
             const data = { 
                 password: state.password || '', 
-                attendance: state.attendance, 
-                markers: state.markers, 
-                attendance_B: state.attendance_B,
-                markers_B: state.markers_B,
-                requiredDays: state.requiredDays, 
-                notes: state.notes, 
-                wishLeaves: state.wishLeaves,
-                settings: state.settings,
+                attendance: state.attendance, markers: state.markers, 
+                attendance_B: state.attendance_B, markers_B: state.markers_B,
+                requiredDays: state.requiredDays, notes: state.notes, 
+                wishLeaves: state.wishLeaves, settings: state.settings,
                 updatedAt: new Date().toISOString() 
             };
             if (saveTimeout) clearTimeout(saveTimeout);
             const doSave = () => { setDoc(docRef, data).catch(err => showError("保存エラー")); };
             if (immediate) doSave(); else saveTimeout = setTimeout(doSave, 800);
-        }
-
-        function resetAutoLockTimer() {
-            clearTimeout(autoLockTimer);
-            if (!state.isLocked) {
-                autoLockTimer = setTimeout(() => {
-                    state.isLocked = true;
-                    state.selectedMode = null;
-                    render();
-                }, 10 * 60 * 1000); 
-            }
         }
 
         const Holidays = {
@@ -641,6 +723,45 @@
                 return h;
             }
         };
+
+        function getMonthKey(year, monthDegree) {
+            let targetYear = (monthDegree >= 4) ? parseInt(year) : parseInt(year) + 1;
+            let startMonth = monthDegree - 1;
+            if (startMonth === 0) { startMonth = 12; targetYear--; }
+            return `${targetYear}-${('0' + startMonth).slice(-2)}-16`;
+        }
+
+        function calcLeaveUsage(currentEndDate) {
+            const baseMonth = parseInt(state.settings.leaveBaseMonth) || 4;
+            const baseDay = parseInt(state.settings.leaveBaseDay) || 1;
+            const totalLeaveDays = parseInt(state.settings.leaveDays) || 0;
+            if (totalLeaveDays === 0) return null;
+
+            let year = currentEndDate.getFullYear();
+            let baseDateThisYear = new Date(year, baseMonth - 1, baseDay);
+            
+            let startBaseDate, endBaseDate;
+            if (currentEndDate >= baseDateThisYear) {
+                startBaseDate = baseDateThisYear;
+                endBaseDate = new Date(year + 1, baseMonth - 1, baseDay);
+            } else {
+                startBaseDate = new Date(year - 1, baseMonth - 1, baseDay);
+                endBaseDate = baseDateThisYear;
+            }
+
+            let usedLeaves = 0;
+            const att = getAtt();
+            for (const [key, val] of Object.entries(att)) {
+                if (val === 'leave') {
+                    const [y, m, d] = key.split('-').map(Number);
+                    const dateObj = new Date(y, m - 1, d);
+                    if (dateObj >= startBaseDate && dateObj < endBaseDate) {
+                        usedLeaves++;
+                    }
+                }
+            }
+            return { used: usedLeaves, total: totalLeaveDays };
+        }
 
         function initMonthDataIfEmpty(start, end) {
             let hasData = false;
@@ -682,58 +803,42 @@
                     const nextMarker = mar[nextK];
                     
                     const isDepartureDay = (nextStatus === 'work' && !nextMarker);
-
                     if (!isDepartureDay) {
-                        const prev = new Date(loop);
-                        prev.setDate(loop.getDate() - 1);
-                        const prevK = formatDateKey(prev);
-                        const prevStatus = att[prevK];
-                        
+                        const prev = new Date(loop); prev.setDate(loop.getDate() - 1);
+                        const prevStatus = att[formatDateKey(prev)];
                         if (prevStatus && prevStatus !== 'work') {
                             alerts.push({ msg: `${loop.getDate()}日 出勤？` });
                         }
                     }
                 }
-                
                 if (currentStatus === 'work' && !hasMarker) {
                      const prev = new Date(loop); prev.setDate(loop.getDate() - 1);
                      const prev2 = new Date(loop); prev2.setDate(loop.getDate() - 2);
                      const pk = formatDateKey(prev);
                      const pk2 = formatDateKey(prev2);
-                     if (att[pk] === 'work' && !mar[pk] &&
-                         att[pk2] === 'work' && !mar[pk2]) {
+                     if (att[pk] === 'work' && !mar[pk] && att[pk2] === 'work' && !mar[pk2]) {
                          alerts.push({ msg: `${loop.getDate()}日 出勤？(3連)` });
                      }
                 }
-
                 if (currentStatus !== 'work') {
-                    const next = new Date(loop);
-                    next.setDate(loop.getDate() + 1);
-                    if (next <= end) {
-                        const nextK = formatDateKey(next);
-                        const nextStatus = att[nextK];
-                        if (!nextStatus && checkIsLoading(loop)) {
-                             alerts.push({ msg: `${loop.getDate()}日 確認` });
-                        }
+                    const next = new Date(loop); next.setDate(loop.getDate() + 1);
+                    if (!att[formatDateKey(next)] && checkIsLoading(loop)) {
+                         alerts.push({ msg: `${loop.getDate()}日 確認` });
                     }
                 }
-
                 loop.setDate(loop.getDate()+1);
             }
             return alerts;
         }
 
         function checkIsLoading(currentDate) {
-            const att = getAtt();
-            const mar = getMar();
+            const att = getAtt(); const mar = getMar();
             for (let i = 1; i <= 7; i++) {
-                const prev = new Date(currentDate);
-                prev.setDate(currentDate.getDate() - i);
+                const prev = new Date(currentDate); prev.setDate(currentDate.getDate() - i);
                 const prevK = formatDateKey(prev);
-                const status = att[prevK];
-                if (status === 'work' || status === 'leave' || status === 'off') {
+                if (att[prevK] === 'work' || att[prevK] === 'leave' || att[prevK] === 'off') {
                     if (mar[prevK]) return true; 
-                    if (status === 'work' && !mar[prevK]) return false; 
+                    if (att[prevK] === 'work' && !mar[prevK]) return false; 
                 }
             }
             return false;
@@ -742,58 +847,27 @@
         function getWarningDates(start, end) {
             const warnings = new Set();
             let loop = new Date(start);
-            const att = getAtt();
-            const mar = getMar();
+            const att = getAtt(); const mar = getMar();
             while(loop <= end) {
                 const k = formatDateKey(loop);
-                const status = att[k];
-                const marker = mar[k];
-
-                if (status === 'work' && !marker) {
-                     const next = new Date(loop);
-                     next.setDate(loop.getDate() + 1);
-                     const nextK = formatDateKey(next);
-                     const nextStatus = att[nextK];
-                     const nextMarker = mar[nextK];
-                     
-                     const isDepartureDay = (nextStatus === 'work' && !nextMarker);
-
-                     if (!isDepartureDay) {
-                         const prev = new Date(loop);
-                         prev.setDate(loop.getDate() - 1);
+                if (att[k] === 'work' && !mar[k]) {
+                     const next = new Date(loop); next.setDate(loop.getDate() + 1);
+                     if (!(att[formatDateKey(next)] === 'work' && !mar[formatDateKey(next)])) {
+                         const prev = new Date(loop); prev.setDate(loop.getDate() - 1);
                          const prevK = formatDateKey(prev);
-                         const prevStatus = att[prevK];
-                         
-                         if (prevStatus && prevStatus !== 'work') {
-                             warnings.add(prevK);
-                         }
+                         if (att[prevK] && att[prevK] !== 'work') warnings.add(prevK);
                      }
                 }
-
-                if (status === 'work' && !marker) {
+                if (att[k] === 'work' && !mar[k]) {
                      const prev = new Date(loop); prev.setDate(loop.getDate() - 1);
                      const prev2 = new Date(loop); prev2.setDate(loop.getDate() - 2);
-                     const pk = formatDateKey(prev);
-                     const pk2 = formatDateKey(prev2);
-                     
-                     if (att[pk] === 'work' && !mar[pk] &&
-                         att[pk2] === 'work' && !mar[pk2]) {
-                         warnings.add(k);
-                     }
+                     const pk = formatDateKey(prev), pk2 = formatDateKey(prev2);
+                     if (att[pk] === 'work' && !mar[pk] && att[pk2] === 'work' && !mar[pk2]) warnings.add(k);
                 }
-
-                if (status !== 'work') {
-                    const next = new Date(loop);
-                    next.setDate(loop.getDate() + 1);
-                    if (next <= end) {
-                        const nextK = formatDateKey(next);
-                        const nextStatus = att[nextK];
-                        if (!nextStatus && checkIsLoading(loop)) {
-                             warnings.add(k);
-                        }
-                    }
+                if (att[k] !== 'work') {
+                    const next = new Date(loop); next.setDate(loop.getDate() + 1);
+                    if (!att[formatDateKey(next)] && checkIsLoading(loop)) warnings.add(k);
                 }
-
                 loop.setDate(loop.getDate() + 1);
             }
             return warnings;
@@ -812,9 +886,20 @@
             document.getElementById('periodLabel').textContent = `${end.getMonth()+1}月度`;
             document.getElementById('currentPeriodDisplay').textContent = `${start.getFullYear()}年${start.getMonth()+1}月${start.getDate()}日 - ${end.getMonth()+1}月${end.getDate()}日`;
             
-            const pk = formatDateKey(start); document.getElementById('requiredDaysInput').value = state.requiredDays[pk] || '';
+            const pk = formatDateKey(start); 
+            const req = parseInt(state.requiredDays[pk]||0);
+            document.getElementById('requiredDaysDisplay').textContent = req > 0 ? req : '-';
+
+            const leaveStatus = calcLeaveUsage(end);
+            const leaveDisplay = document.getElementById('leaveUsageDisplay');
+            if (leaveStatus) {
+                leaveDisplay.textContent = `有給消化: ${leaveStatus.used} / ${leaveStatus.total} 日`;
+                leaveDisplay.style.display = 'block';
+            } else {
+                leaveDisplay.style.display = 'none';
+            }
+
             const holMap = Holidays.getMap(start, end);
-            
             ['日','月','火','水','木','金','土'].forEach(d => { const div=document.createElement('div'); div.className='weekday'; div.textContent=d; grid.appendChild(div); });
             
             const warningDates = getWarningDates(start, end);
@@ -845,7 +930,6 @@
             const v = document.getElementById('statusMessageContainer'); v.innerHTML = ''; document.getElementById('totalDaysDisplay').textContent = `全体: ${counts.t}日`;
             const fill = counts.w+counts.l+counts.o+counts.po; 
             if (fill!==counts.t) { const d=document.createElement('div'); d.className='error-message'; d.textContent=`未入力が ${counts.t-fill}日 あります。`; v.appendChild(d); }
-            const req = parseInt(state.requiredDays[pk]||0); 
             if(req>0){ 
                 const act = counts.w + counts.l; 
                 if(act<req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`不足: ${req-act}日`; v.appendChild(d); }
@@ -862,6 +946,7 @@
 
             document.querySelectorAll('.stat-item[data-mode]').forEach(el => el.classList.toggle('active-mode', el.dataset.mode===state.selectedMode));
             document.getElementById('noboriBtn').classList.toggle('active-tool', state.selectedMode==='nobori');
+            document.getElementById('memoModeBtn').classList.toggle('active-tool', state.selectedMode==='memo');
         }
 
         function openMemoModal(dateKey) {
@@ -869,6 +954,7 @@
             const existingNote = state.notes[dateKey] || "";
             document.getElementById('modalTitle').textContent = `${dateKey} の予定`;
             document.getElementById('memoInput').value = existingNote;
+            
             document.getElementById('memoModal').classList.add('active');
             document.getElementById('memoInput').focus();
         }
@@ -906,7 +992,13 @@
 
             if (hol) { const hName = document.createElement('span'); hName.className = 'holiday-name'; hName.textContent = hol; cell.appendChild(hName); }
             if (s==='leave') { const l=document.createElement('span'); l.className='status-label'; l.textContent='有休'; cell.appendChild(l); }
-            if (n) { const ns=document.createElement('span'); ns.className='note-text'; ns.textContent=n; cell.appendChild(ns); }
+            
+            if (n) { 
+                const ns = document.createElement('span'); 
+                ns.className = 'note-indicator'; 
+                ns.textContent = '📝'; 
+                cell.appendChild(ns); 
+            }
             
             if (k === todayKey) cell.classList.add('is-today');
             
@@ -927,6 +1019,7 @@
             cell.onclick = () => { 
                 if (state.isLocked) return;
                 resetAutoLockTimer(); 
+                if (!state.selectedMode) return;
 
                 if (state.selectedMode === 'memo') {
                     openMemoModal(k);
@@ -960,121 +1053,201 @@
             const editBtn = document.getElementById('editBtn');
             const toolbar = document.getElementById('mainToolbar');
             const statsBar = document.getElementById('mainStatsBar');
-            const requiredInput = document.getElementById('requiredDaysInput');
 
             if (state.isLocked) {
-                lockBtn.classList.add('active');
-                editBtn.classList.remove('active', 'edit-mode');
-                toolbar.classList.add('locked');
-                statsBar.classList.add('locked');
-                requiredInput.disabled = true;
+                if (lockBtn) lockBtn.classList.add('active-lock');
+                if (editBtn) editBtn.classList.remove('active');
+                if (toolbar) toolbar.classList.add('locked');
+                if (statsBar) statsBar.classList.add('locked');
             } else {
-                lockBtn.classList.remove('active');
-                editBtn.classList.add('active', 'edit-mode');
-                toolbar.classList.remove('locked');
-                statsBar.classList.remove('locked');
-                requiredInput.disabled = false;
+                if (lockBtn) lockBtn.classList.remove('active-lock');
+                if (editBtn) editBtn.classList.add('active');
+                if (toolbar) toolbar.classList.remove('locked');
+                if (statsBar) statsBar.classList.remove('locked');
             }
         }
 
-        document.getElementById('lockBtn').onclick = () => { 
+        safeAddEventListener('lockBtn', 'click', () => { 
             state.isLocked = true; 
             state.selectedMode = null; 
             clearTimeout(autoLockTimer);
             render(); 
-        };
-        document.getElementById('editBtn').onclick = () => { 
+        });
+        
+        safeAddEventListener('editBtn', 'click', () => { 
             state.isLocked = false; 
             render(); 
             resetAutoLockTimer();
-        };
+        });
 
-        // パターン切替ボタン
-        document.getElementById('patternA').onclick = () => {
-            state.currentPattern = 'A';
-            localStorage.setItem('currentPattern', 'A');
-            render();
-        };
-        document.getElementById('patternB').onclick = () => {
-            state.currentPattern = 'B';
-            localStorage.setItem('currentPattern', 'B');
-            render();
-        };
+        safeAddEventListener('patternA', 'click', () => { state.currentPattern = 'A'; localStorage.setItem('currentPattern', 'A'); render(); });
+        safeAddEventListener('patternB', 'click', () => { state.currentPattern = 'B'; localStorage.setItem('currentPattern', 'B'); render(); });
+        safeAddEventListener('prevBtn', 'click', () => { state.currentStartDate.setMonth(state.currentStartDate.getMonth()-1); render(); });
+        safeAddEventListener('nextBtn', 'click', () => { state.currentStartDate.setMonth(state.currentStartDate.getMonth()+1); render(); });
+        
+        const monthSelect = document.getElementById('leaveBaseMonthInput');
+        if (monthSelect) {
+            for(let i=1; i<=12; i++) {
+                const opt = document.createElement('option'); opt.value = i; opt.textContent = i; monthSelect.appendChild(opt);
+            }
+        }
+        
+        const daySelect = document.getElementById('leaveBaseDayInput');
+        if (daySelect) {
+            for(let i=1; i<=31; i++) {
+                const opt = document.createElement('option'); opt.value = i; opt.textContent = i; daySelect.appendChild(opt);
+            }
+        }
 
-        document.getElementById('prevBtn').onclick = () => { state.currentStartDate.setMonth(state.currentStartDate.getMonth()-1); render(); };
-        document.getElementById('nextBtn').onclick = () => { state.currentStartDate.setMonth(state.currentStartDate.getMonth()+1); render(); };
-        
-        document.getElementById('requiredDaysInput').oninput = (e) => { const k=formatDateKey(state.currentStartDate); if(e.target.value) state.requiredDays[k]=parseInt(e.target.value); else delete state.requiredDays[k]; save(); render(); };
-        
-        document.getElementById('settingsBtn').onclick = () => {
+        let tempRequiredDays = {};
+        const yearSelect = document.getElementById('yearSelect');
+        const reqDaysGrid = document.getElementById('requiredDaysFormGrid');
+
+        function renderRequiredDaysForm() {
+            if (!yearSelect || !reqDaysGrid) return;
+            const y = yearSelect.value;
+            reqDaysGrid.innerHTML = '';
+            const months = [4,5,6,7,8,9,10,11,12,1,2,3];
+            months.forEach(m => {
+                const key = getMonthKey(y, m);
+                const div = document.createElement('div');
+                div.style.display = 'flex'; div.style.alignItems = 'center'; div.style.justifyContent = 'space-between';
+                
+                const label = document.createElement('span'); label.style.fontSize = '0.85rem'; label.textContent = `${m}月度:`;
+                const input = document.createElement('input'); input.type = 'number'; input.className = 'modal-input';
+                input.style.width = '60px'; input.style.margin = '0'; input.style.padding = '4px';
+                input.value = tempRequiredDays[key] || '';
+                input.oninput = (e) => { if (e.target.value) tempRequiredDays[key] = parseInt(e.target.value); else delete tempRequiredDays[key]; };
+                
+                div.appendChild(label); div.appendChild(input); reqDaysGrid.appendChild(div);
+            });
+        }
+        if (yearSelect) yearSelect.onchange = renderRequiredDaysForm;
+
+        safeAddEventListener('settingsBtn', 'click', () => {
             if (state.isLocked) return;
             resetAutoLockTimer();
             document.getElementById('senderNameInput').value = state.settings.senderName || '';
             document.getElementById('email1Input').value = state.settings.email1 || '';
             document.getElementById('email2Input').value = state.settings.email2 || '';
-            document.getElementById('settingsModal').classList.add('active');
+            
+            document.getElementById('leaveDaysInput').value = state.settings.leaveDays || '';
+            document.getElementById('leaveBaseMonthInput').value = state.settings.leaveBaseMonth || 4;
+            document.getElementById('leaveBaseDayInput').value = state.settings.leaveBaseDay || 1;
+            
+            tempRequiredDays = { ...state.requiredDays };
+            
+            const currentEnd = new Date(state.currentStartDate.getFullYear(), state.currentStartDate.getMonth() + 1, 15);
+            const m = currentEnd.getMonth() + 1;
+            const y = currentEnd.getFullYear();
+            const targetYear = (m >= 4) ? y : y - 1;
+            
+            if (yearSelect) {
+                if (targetYear >= 2025 && targetYear <= 2030) yearSelect.value = targetYear;
+                else yearSelect.value = 2025;
+            }
+            
+            renderRequiredDaysForm();
+            const modal = document.getElementById('settingsModal');
+            if (modal) modal.classList.add('active');
+        });
+
+        const closeSettings = () => {
+            const modal = document.getElementById('settingsModal');
+            if (modal) modal.classList.remove('active');
         };
-        document.getElementById('settingsCancelBtn').onclick = () => document.getElementById('settingsModal').classList.remove('active');
-        document.getElementById('settingsSaveBtn').onclick = () => {
+        safeAddEventListener('settingsCancelBtn', 'click', closeSettings);
+        safeAddEventListener('settingsCloseIconBtn', 'click', closeSettings);
+        
+        safeAddEventListener('settingsSaveBtn', 'click', () => {
             state.settings.senderName = document.getElementById('senderNameInput').value.trim();
             state.settings.email1 = document.getElementById('email1Input').value.trim();
             state.settings.email2 = document.getElementById('email2Input').value.trim();
-            save();
-            document.getElementById('settingsModal').classList.remove('active');
-        };
+            
+            state.settings.leaveDays = parseInt(document.getElementById('leaveDaysInput').value) || 0;
+            state.settings.leaveBaseMonth = parseInt(document.getElementById('leaveBaseMonthInput').value) || 4;
+            state.settings.leaveBaseDay = parseInt(document.getElementById('leaveBaseDayInput').value) || 1;
+            
+            state.requiredDays = { ...tempRequiredDays };
+            
+            save(); render(); closeSettings();
+        });
 
-        document.getElementById('resetAllBtn').onclick = () => {
-            if(state.isLocked) return; 
+        safeAddEventListener('resetAllBtn', 'click', () => {
             resetAutoLockTimer();
             const endMonth = state.currentStartDate.getMonth() + 2 > 12 ? (state.currentStartDate.getMonth() + 2) - 12 : state.currentStartDate.getMonth() + 2;
             const pLabel = state.currentPattern;
-            document.getElementById('confirmMessage').textContent = `「${endMonth}月度 (パターン${pLabel})」を初期状態（平日出勤・土日祝休み）にリセットしますか？\n（現在の入力内容は上書きされますが、予定は残ります）`;
-            document.getElementById('confirmModal').classList.add('active');
+            
+            const confirmMsg = document.getElementById('confirmMessage');
+            if (confirmMsg) confirmMsg.textContent = `「${endMonth}月度 (パターン${pLabel})」を初期状態（平日出勤・土日祝休み）にリセットしますか？\n（予定は残ります）`;
+            
+            const settingsModal = document.getElementById('settingsModal');
+            if (settingsModal) settingsModal.classList.remove('active');
+            
+            const confirmModal = document.getElementById('confirmModal');
+            if (confirmModal) confirmModal.classList.add('active');
+            
             confirmCallback = () => {
                 const s = new Date(state.currentStartDate), e = new Date(s.getFullYear(), s.getMonth()+1, 15);
-                const att = getAtt();
-                const mar = getMar();
+                const att = getAtt(); const mar = getMar();
                 let l = new Date(s);
                 while(l <= e){
                     const k = formatDateKey(l);
-                    delete att[k];
-                    delete mar[k];
-                    delete state.wishLeaves[k]; 
+                    delete att[k]; delete mar[k]; delete state.wishLeaves[k]; 
                     l.setDate(l.getDate()+1);
                 }
-                save(true);
-                render();
+                save(true); render();
             };
-        };
+        });
 
-        document.getElementById('allClearBtn').onclick = () => {
-            if (state.isLocked) return;
-            document.getElementById('settingsModal').classList.remove('active');
-            document.getElementById('confirmMessage').textContent = `【警告】すべてのデータ（A/B両パターンのシフト、予定、希望休など）を完全に消去しますか？\n※設定は残ります。この操作は取り消せません。`;
-            document.getElementById('confirmModal').classList.add('active');
+        safeAddEventListener('allClearBtn', 'click', () => {
+            const settingsModal = document.getElementById('settingsModal');
+            if (settingsModal) settingsModal.classList.remove('active');
+            
+            const confirmMsg = document.getElementById('confirmMessage');
+            if (confirmMsg) confirmMsg.textContent = `【警告】すべてのデータ（A/B両パターンのシフト、予定、希望休など）を完全に消去しますか？\n※設定は残ります。この操作は取り消せません。`;
+            
+            const confirmModal = document.getElementById('confirmModal');
+            if (confirmModal) confirmModal.classList.add('active');
+            
             confirmCallback = () => {
-                state.attendance = {};
-                state.markers = {};
-                state.attendance_B = {};
-                state.markers_B = {};
-                state.notes = {};
-                state.wishLeaves = {};
-                state.requiredDays = {};
-                save(true);
-                render();
+                state.attendance = {}; state.markers = {}; state.attendance_B = {}; state.markers_B = {};
+                state.notes = {}; state.wishLeaves = {}; state.requiredDays = {};
+                save(true); render();
             };
-        };
+        });
         
-        document.getElementById('confirmOkBtn').onclick = () => { if(confirmCallback) confirmCallback(); document.getElementById('confirmModal').classList.remove('active'); };
-        document.getElementById('confirmCancelBtn').onclick = () => { document.getElementById('confirmModal').classList.remove('active'); };
+        safeAddEventListener('confirmOkBtn', 'click', () => { 
+            if(confirmCallback) confirmCallback(); 
+            const confirmModal = document.getElementById('confirmModal');
+            if (confirmModal) confirmModal.classList.remove('active'); 
+        });
         
-        document.getElementById('noboriBtn').onclick = () => { state.selectedMode = state.selectedMode==='nobori'?null:'nobori'; render(); };
-        document.getElementById('memoModeBtn').onclick = () => { state.selectedMode = state.selectedMode==='memo'?null:'memo'; render(); };
+        safeAddEventListener('confirmCancelBtn', 'click', () => { 
+            const confirmModal = document.getElementById('confirmModal');
+            if (confirmModal) confirmModal.classList.remove('active'); 
+        });
         
-        document.getElementById('memoCancelBtn').onclick = () => document.getElementById('memoModal').classList.remove('active');
-        document.getElementById('memoSaveBtn').onclick = () => { const v = document.getElementById('memoInput').value.trim(); if(v) state.notes[currentMemoKey] = v; else delete state.notes[currentMemoKey]; save(); render(); document.getElementById('memoModal').classList.remove('active'); };
+        safeAddEventListener('noboriBtn', 'click', () => { state.selectedMode = state.selectedMode==='nobori'?null:'nobori'; render(); });
+        safeAddEventListener('memoModeBtn', 'click', () => { state.selectedMode = state.selectedMode==='memo'?null:'memo'; render(); });
         
-        document.getElementById('copyTextBtn').onclick = (e) => { 
+        safeAddEventListener('memoCancelBtn', 'click', () => {
+            const memoModal = document.getElementById('memoModal');
+            if (memoModal) memoModal.classList.remove('active');
+        });
+        
+        safeAddEventListener('memoSaveBtn', 'click', () => { 
+            const memoInput = document.getElementById('memoInput');
+            if (memoInput) {
+                const v = memoInput.value.trim(); 
+                if(v) state.notes[currentMemoKey] = v; else delete state.notes[currentMemoKey]; 
+                save(); render(); 
+            }
+            const memoModal = document.getElementById('memoModal');
+            if (memoModal) memoModal.classList.remove('active'); 
+        });
+        
+        safeAddEventListener('copyTextBtn', 'click', (e) => { 
             e.preventDefault(); 
             if (state.isLocked) return;
             resetAutoLockTimer();
@@ -1110,7 +1283,7 @@
             if (email2) toList.push(email2);
 
             if (toList.length === 0) {
-                showAlert("宛先のメールアドレスが設定されていません。\n「⚙️ 設定」ボタンから配車係のメールアドレスを登録してください。");
+                showAlert("宛先のメールアドレスが設定されていません。\n「⚙️ 設定」から配車係のメールアドレスを登録してください。");
                 return;
             }
 
@@ -1118,49 +1291,43 @@
             const subject = `希望休申請 ${end.getMonth()+1}月度${senderName}`;
             const body = `お疲れ様です。\n下記にて、休みをいただきたく申請いたします。\n\n【${end.getMonth()+1}月度 】\n${datesList}\nお手数をおかけしますが、よろしくお願いいたします。`;
 
-            const dummy = document.createElement("textarea");
-            document.body.appendChild(dummy);
-            dummy.value = body;
-            dummy.select();
-            document.execCommand("copy");
-            document.body.removeChild(dummy);
+            const dummy = document.createElement("textarea"); document.body.appendChild(dummy);
+            dummy.value = body; dummy.select(); document.execCommand("copy"); document.body.removeChild(dummy);
 
             const mailtoUrl = `mailto:${toList.join(',')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-            
             const ua = navigator.userAgent.toLowerCase();
             const isAppBrowser = ua.indexOf('line') > -1 || ua.indexOf('instagram') > -1;
 
             if (isAppBrowser) {
-                const a = document.createElement('a');
-                a.href = mailtoUrl;
-                a.target = '_blank';
-                a.rel = 'noopener noreferrer';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                
+                const a = document.createElement('a'); a.href = mailtoUrl; a.target = '_blank'; a.rel = 'noopener noreferrer';
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
                 setTimeout(() => {
-                    showAlert("【重要】\nLINE等のアプリ内ブラウザではメールアプリが正常に起動せず、データが初期化される場合があります。\n\n右下（または右上）のメニューから「ブラウザで開く（Safari/Chrome等）」を選択してご利用ください。\n\n※メール本文はコピーされていますので、ご自身でメールアプリを開いて貼り付けることも可能です。");
+                    showAlert("【重要】\nLINE等のアプリ内ブラウザではメールアプリが正常に起動しない場合があります。\n\n右下のメニューから「ブラウザで開く（Safari/Chrome等）」を選択してご利用ください。\n\n※メール本文はコピーされています。");
                 }, 1500);
             } else {
                 window.location.href = mailtoUrl;
             }
 
             const msg = document.getElementById('copyStatusMsg');
-            msg.textContent = 'メールアプリを起動します\n（本文はコピー済みです）';
-            msg.style.display = 'block';
-            setTimeout(() => { msg.style.display = 'none'; }, 3000);
-        };
+            if (msg) {
+                msg.textContent = 'メールアプリを起動します\n（本文はコピー済みです）';
+                msg.style.display = 'block';
+                setTimeout(() => { msg.style.display = 'none'; }, 3000);
+            }
+        });
 
         ['Work','WishLeave','Leave','Off','PublicOff'].forEach(m => { 
             const id = 'mode' + m;
             const val = m.replace(/[A-Z]/g, l => '_' + l.toLowerCase()).replace(/^_/,''); 
-            document.getElementById(id).onclick = () => { state.selectedMode = (state.selectedMode === val) ? null : val; render(); }; 
+            const el = document.getElementById(id);
+            if (el) {
+                el.onclick = () => { state.selectedMode = (state.selectedMode === val) ? null : val; render(); }; 
+            }
         });
 
-        ['mousedown', 'touchstart', 'keydown'].forEach(evt => 
-            document.addEventListener(evt, resetAutoLockTimer)
-        );
+        ['mousedown', 'touchstart', 'keydown'].forEach(evt => document.addEventListener(evt, () => {
+            if (typeof resetAutoLockTimer === 'function') resetAutoLockTimer();
+        }));
 
         initDate(); render(); initFirebase(); 
     </script>
