@@ -268,7 +268,7 @@
         <div class="toolbar locked" id="mainToolbar">
             <button class="tool-btn" id="noboriBtn">🚚 拠点積</button>
             <button class="tool-btn" id="memoModeBtn">📝 予定</button>
-            <button class="tool-btn" id="copyTextBtn">📋 出力</button>
+            <button class="tool-btn" id="copyTextBtn">📋 休み申請</button>
             <button class="tool-btn" id="settingsBtn">⚙️ 設定</button>
         </div>
 
@@ -288,7 +288,7 @@
                 <span class="stat-label-count">有休</span><span class="stat-value stat-leave" id="leaveCount">0</span>
             </div>
             <div class="stat-item" id="modeOff" data-mode="off">
-                <span class="stat-label-count">休日</span><span class="stat-value stat-off" id="offCount">0</span>
+                <span class="stat-label-count">休み</span><span class="stat-value stat-off" id="offCount">0</span>
             </div>
             <div class="stat-item" id="modePublicOff" data-mode="public_off">
                 <span class="stat-label-count">法休</span><span class="stat-value stat-public-off" id="publicOffCount">0</span>
@@ -491,6 +491,29 @@
         </div>
     </div>
     
+    <!-- アラート用モーダル -->
+    <div class="modal-overlay" id="alertModal" style="z-index: 3000;">
+        <div class="modal-content" style="max-height: 40vh; display: flex; flex-direction: column;">
+            <h3 id="alertTitle" style="margin-top:0; font-size: 1.1rem; color:var(--status-warn-text)">お知らせ</h3>
+            <p id="alertMessage" style="font-size: 0.9rem; color: #333; margin-bottom: 16px; flex-grow: 1; white-space: pre-wrap;"></p>
+            <div style="display:flex;justify-content:flex-end;">
+                <button class="modal-btn save" id="alertOkBtn" style="background-color: var(--status-ok-bg); color: var(--status-ok-text); border: 1px solid #c8e6c9;">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 確認用モーダル -->
+    <div class="modal-overlay" id="confirmModal" style="z-index: 3000;">
+        <div class="modal-content" style="max-height: 40vh; display: flex; flex-direction: column;">
+            <h3 style="margin-top:0; font-size: 1.1rem; color:var(--status-warn-text)">確認</h3>
+            <p id="confirmMessage" style="font-size: 0.9rem; color: #333; margin-bottom: 16px; flex-grow: 1; white-space: pre-wrap;"></p>
+            <div style="display:flex;justify-content:flex-end;gap:12px;">
+                <button class="modal-btn cancel" id="confirmCancelBtn">キャンセル</button>
+                <button class="modal-btn save" id="confirmOkBtn" style="background-color: var(--status-ok-bg); color: var(--status-ok-text); border: 1px solid #c8e6c9;">OK</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
         import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
@@ -543,6 +566,10 @@
             alertModal.style.zIndex = "3000"; 
             alertModal.classList.add('active');
         }
+        
+        document.getElementById('alertOkBtn').addEventListener('click', () => {
+             document.getElementById('alertModal').classList.remove('active');
+        });
 
         function updateSyncStatus(text, statusClass) {
             const mainEl = document.getElementById('mainSyncStatus');
@@ -1162,7 +1189,7 @@
             }
         }
 
-        let adminTempRequiredDays = {}; 
+        let adminTempRequiredDays = safeParse('adminTempRequiredDaysData', {}); 
         const adminYearSelect = document.getElementById('adminYearSelect');
         const adminReqDaysGrid = document.getElementById('adminRequiredDaysFormGrid');
 
@@ -1179,10 +1206,11 @@
                 const label = document.createElement('span'); label.style.fontSize = '0.85rem'; label.textContent = `${m}月度:`;
                 const input = document.createElement('input'); input.type = 'number'; input.className = 'modal-input';
                 input.style.width = '60px'; input.style.margin = '0'; input.style.padding = '4px';
-                input.value = adminTempRequiredDays[key] || '';
+                input.value = adminTempRequiredDays[key] !== undefined ? adminTempRequiredDays[key] : '';
                 input.oninput = (e) => { 
                     if (e.target.value) adminTempRequiredDays[key] = parseInt(e.target.value); 
                     else delete adminTempRequiredDays[key]; 
+                    localStorage.setItem('adminTempRequiredDaysData', JSON.stringify(adminTempRequiredDays));
                 };
                 
                 div.appendChild(label); div.appendChild(input); adminReqDaysGrid.appendChild(div);
@@ -1329,7 +1357,7 @@
                 
                 adminStartDate = new Date(state.currentStartDate);
 
-                adminTempRequiredDays = {};
+                adminTempRequiredDays = safeParse('adminTempRequiredDaysData', {});
                 const currentEnd = new Date(state.currentStartDate.getFullYear(), state.currentStartDate.getMonth() + 1, 15);
                 const m = currentEnd.getMonth() + 1;
                 const y = currentEnd.getFullYear();
@@ -1553,16 +1581,21 @@
                 if(state.wishLeaves[k] || state.attendance[k] === 'leave') { 
                     const day = loop.getDay();
                     let dayType = "";
+                    let prefix = "〇";
                     if (holMap[k]) {
                         dayType = "祝日";
+                        prefix = "▲";
                     } else if (day === 0) {
                         dayType = "日曜日";
+                        prefix = "▲";
                     } else if (day === 6) {
                         dayType = "土曜日";
+                        prefix = "▲";
                     } else {
                         dayType = "平日";
+                        prefix = "〇";
                     }
-                    datesList += `・${loop.getMonth()+1}月${loop.getDate()}日${weekChars[day]}曜日（${dayType}）\n`; 
+                    datesList += `${prefix}${loop.getMonth()+1}月${loop.getDate()}日${weekChars[day]}曜日（${dayType}）\n`; 
                 } 
                 loop.setDate(loop.getDate()+1); 
             } 
@@ -1584,8 +1617,8 @@
             }
 
             const senderName = state.settings.senderName ? `  ${state.settings.senderName}` : '';
-            const subject = `希望休申請 ${end.getMonth()+1}月度${senderName}`;
-            const body = `お疲れ様です。\n下記にて、休みをいただきたく申請いたします。\n\n【${end.getMonth()+1}月度 】\n${datesList}\nお手数をおかけしますが、よろしくお願いいたします。`;
+            const subject = `休暇申請   ${end.getMonth()+1}月度${senderName}`;
+            const body = `お疲れ様です。\n下記にて私用のため休暇申請いたします。\n\n【${end.getMonth()+1}月度 】\n${datesList}\nよろしくお願いいたします。`;
 
             currentMailTo = toList.join(',');
             currentMailSubject = subject;
