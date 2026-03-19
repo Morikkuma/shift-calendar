@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>勤務管理カレンダー v1.65 (完全統合版)</title>
+    <title>勤務管理カレンダー v1.66 (機能改善版)</title>
     <style>
         /* --- Google Fonts --- */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
@@ -75,7 +75,7 @@
         .month-title { font-size: 0.8rem; font-weight: 500; color: var(--text-sub); margin: 0; }
         .nav-btn { background: none; border: none; cursor: pointer; width: 44px; height: 44px; border-radius: 50%; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--text-main); }
         
-        /* 同期ステータス (ヘッダー内) */
+        /* 同期ステータス */
         .sync-status-main { font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; display: inline-block; background-color: #eee; color: #666; margin-top: 4px; font-weight: 700;}
         .sync-status-main.active { background-color: var(--status-sync-bg); color: var(--status-sync-text); }
         .sync-status-main.saved { background-color: var(--status-ok-bg); color: var(--status-ok-text); }
@@ -85,22 +85,27 @@
         .toolbar { 
             display: flex; gap: 8px; padding: 10px 16px; background-color: #fff; 
             border-bottom: 1px solid #f0f0f0; overflow-x: auto; 
-            scrollbar-width: none; /* Firefox */
+            scrollbar-width: none; 
         }
-        .toolbar::-webkit-scrollbar { display: none; } /* Chrome, Safari */
+        .toolbar::-webkit-scrollbar { display: none; } 
         .tool-btn { 
             flex: 0 0 auto; white-space: nowrap; padding: 8px 14px; 
             border: 1px solid #eee; border-radius: 20px; background-color: #fff; 
             font-size: 0.8rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.2s; 
         }
         .tool-btn.active-tool { background-color: #fff3e0; border-color: #ffb74d; color: #f57c00; box-shadow: inset 0 0 0 1px #ffb74d;}
-        .toolbar.locked .tool-btn { opacity: 0.5; pointer-events: none; }
+        
+        /* ロック中の一部のボタンのみ無効化 */
+        .toolbar.locked #noboriBtn, .toolbar.locked #resetAllBtn { opacity: 0.5; pointer-events: none; }
 
         /* 統計エリア */
         .stats-bar { 
             display: flex; justify-content: space-between; align-items: flex-end; 
-            padding: 10px 8px; background-color: #fff; border-bottom: 1px solid #eee; gap: 4px; overflow-x: auto; 
+            padding: 10px 8px; background-color: #fff; gap: 4px; overflow-x: auto; 
+            scrollbar-width: none;
         }
+        .stats-bar::-webkit-scrollbar { display: none; }
+        
         .stat-item { 
             display: flex; flex-direction: column; align-items: center; 
             padding: 6px 4px; border-radius: 8px; cursor: pointer; 
@@ -108,24 +113,21 @@
         }
         
         .stat-item[data-mode="work"] { border-color: var(--primary-work); }
-        .stat-item[data-mode="wish_leave"] { border-color: var(--accent-wish); }
         .stat-item[data-mode="leave"] { border-color: var(--accent-leave); }
         .stat-item[data-mode="off"] { border-color: var(--accent-off); }
         .stat-item[data-mode="public_off"] { border-color: var(--accent-public-off); }
         
         .stat-item[data-mode="work"].active-mode { background-color: #eaf7f2; }
-        .stat-item[data-mode="wish_leave"].active-mode { background-color: #ffebee; }
         .stat-item[data-mode="leave"].active-mode { background-color: #fff8e1; }
         .stat-item[data-mode="off"].active-mode { background-color: #ffebee; }
         .stat-item[data-mode="public_off"].active-mode { background-color: #ffebee; border-color: #e57373; }
 
         .stat-item.no-click { cursor: default; border-color: #eee; }
-        .stats-bar.locked .stat-item:not(.no-click) { opacity: 0.5; border-color: transparent; }
+        .stats-bar.locked .stat-item:not(.no-click) { opacity: 0.5; border-color: transparent; pointer-events: none; }
 
         .stat-label-count { font-size: 0.6rem; color: var(--text-sub); font-weight: 700; white-space: nowrap; margin-bottom: 2px;}
         .stat-value { font-size: 1rem; font-weight: 700; line-height: 1; }
         .stat-work { color: var(--primary-work-dark); }
-        .stat-wish { color: var(--accent-wish); }
         .stat-off { color: var(--accent-off-dark); }
         .stat-public-off { color: #d32f2f; }
         .stat-leave { color: var(--accent-leave-dark); }
@@ -144,8 +146,7 @@
         .weekday:nth-child(7) { color: #1565c0; }
 
         .day-cell { aspect-ratio: 1/1; border-radius: 8px; background-color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 4px 2px; cursor: pointer; position: relative; font-weight: 500; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.02);}
-        .day-cell.locked { cursor: default; }
-
+        
         .day-cell.is-sun, .day-cell.is-holiday { color: #d32f2f !important; }
         .day-cell.is-sat { color: #1565c0; }
         .day-cell.outside-month { opacity: 0.3; background-color: #f5f5f5; box-shadow: none;}
@@ -158,9 +159,6 @@
         .day-cell.is-holiday, .day-cell.is-sun { font-weight: 700; }
         .day-cell.is-today { border: 2px solid var(--text-sub); }
 
-        /* 希望休の濃い赤枠 */
-        .day-cell.is-wish-leave { box-shadow: inset 0 0 0 3px var(--accent-wish); }
-
         .day-date { font-size: 0.8rem; font-weight: 700; margin-bottom: 1px; }
 
         .nobori-mark { margin-left: 2px; font-size: 0.6rem; color: #4a4a4a; font-weight: normal; }
@@ -170,13 +168,12 @@
         .holiday-name { font-size: 0.45rem; line-height: 1.1; margin-top: 1px; text-align: center; color: #d32f2f; font-weight: 400; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
         .status-label { font-size: 0.6rem; font-weight: 700; margin-top: 1px; }
         
-        /* メモはアイコン化 */
         .note-indicator { font-size: 0.75rem; margin-top: 1px; }
 
         .warning-icon { position: absolute; bottom: 2px; right: 2px; font-size: 0.8rem; color: #ff9800; text-shadow: 0 1px 2px rgba(0,0,0,0.2); animation: pulse 2s infinite; }
         @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0.8; } }
 
-        /* フローティング編集スイッチ (右下固定) */
+        /* フローティング編集スイッチ */
         .floating-edit-switch {
             position: fixed;
             bottom: 24px;
@@ -196,7 +193,7 @@
         .fab-btn.active { background-color: var(--primary-work-dark); color: #fff; box-shadow: var(--shadow-sm); }
         .fab-btn.active-lock { background-color: #e0e0e0; color: #555; }
 
-        /* モーダル共通 (ボトムシート風) */
+        /* モーダル共通 */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: flex-end; z-index: 1000; }
         .modal-overlay.active { display: flex; }
         .modal-content { 
@@ -216,7 +213,6 @@
         .modal-btn.save { background-color: var(--primary-work-dark); color: #fff; flex: 1;}
         .modal-btn.danger { background-color: #ffebee; color: #d32f2f; border: 1px solid #ffcdd2;}
 
-        /* 設定画面内のスタイル */
         .settings-section { margin-bottom: 20px; }
         .settings-section h4 { margin: 0 0 10px 0; font-size: 0.9rem; color: var(--primary-work-dark); display: flex; align-items: center; gap: 6px;}
         .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px;}
@@ -264,9 +260,6 @@
             <div class="stat-item" id="modeWork" data-mode="work">
                 <span class="stat-label-count">出勤</span><span class="stat-value stat-work" id="workCount">0</span>
             </div>
-            <div class="stat-item" id="modeWishLeave" data-mode="wish_leave">
-                <span class="stat-label-count">希望休</span><span class="stat-value stat-wish">-</span>
-            </div>
             <div class="stat-item" id="modeLeave" data-mode="leave">
                 <span class="stat-label-count">有休</span><span class="stat-value stat-leave" id="leaveCount">0</span>
             </div>
@@ -306,7 +299,7 @@
     <div class="modal-overlay" id="memoModal">
         <div class="modal-content" style="max-height: 50vh;">
             <div id="modalTitle" style="font-weight:700; margin-bottom:10px; font-size:1.1rem; color:var(--primary-work-dark)"></div>
-            <textarea id="memoInput" class="modal-textarea" placeholder="予定やメモを入力 (例: 早番, 13-22, リーダー など)"></textarea>
+            <textarea id="memoInput" class="modal-textarea" placeholder="予定やメモを入力 (例: 早番, 13-22 など)"></textarea>
             <div style="display:flex;justify-content:flex-end;gap:12px;">
                 <button class="modal-btn cancel" id="memoCancelBtn">閉じる</button>
                 <button class="modal-btn save" id="memoSaveBtn">保存する</button>
@@ -453,7 +446,6 @@
         let db, auth, user, unsubscribeDoc = null, isCloudActive = false, saveTimeout = null, confirmCallback = null, currentMemoKey = null;
         let autoLockTimer = null;
 
-        // localStorageから安全にパースするための関数
         function safeParse(key, defaultValue) {
             try {
                 const item = localStorage.getItem(key);
@@ -464,11 +456,9 @@
             }
         }
 
-        // A/Bパターン・パスワード対応のState構造
         const state = {
             currentStartDate: new Date(),
             currentPattern: localStorage.getItem('currentPattern') || 'A',
-            
             password: localStorage.getItem('lastPassword') || '',
 
             attendance: safeParse('attendanceData', {}),
@@ -476,8 +466,10 @@
             attendance_B: safeParse('attendanceData_B', {}),
             markers_B: safeParse('markersData_B', {}), 
             
-            requiredDays: safeParse('requiredDaysData', {}),
             notes: safeParse('notesData', {}),
+            notes_B: safeParse('notesData_B', {}), // パターンB用のメモ追加
+
+            requiredDays: safeParse('requiredDaysData', {}),
             wishLeaves: safeParse('wishLeavesData', {}), 
             settings: safeParse('settingsData', { email1: '', email2: '', senderName: '', leaveDays: 0, leaveBaseMonth: 4, leaveBaseDay: 1 }), 
             
@@ -485,9 +477,9 @@
             isLocked: true 
         };
 
-        // 現在のパターンに応じたデータを返すヘルパー関数
         const getAtt = () => state.currentPattern === 'A' ? state.attendance : state.attendance_B;
         const getMar = () => state.currentPattern === 'A' ? state.markers : state.markers_B;
+        const getNotes = () => state.currentPattern === 'A' ? state.notes : state.notes_B;
 
         function formatDateKey(d) { return `${d.getFullYear()}-${('0'+(d.getMonth()+1)).slice(-2)}-${('0'+d.getDate()).slice(-2)}`; }
         function initDate() { const today = new Date(); if (today.getDate() <= 15) state.currentStartDate = new Date(today.getFullYear(), today.getMonth()-1, 16); else state.currentStartDate = new Date(today.getFullYear(), today.getMonth(), 16); }
@@ -541,13 +533,14 @@
             if (el) el.addEventListener(event, handler);
         };
 
-        // 自動ロック関数
         function resetAutoLockTimer() {
             clearTimeout(autoLockTimer);
             if (!state.isLocked) {
                 autoLockTimer = setTimeout(() => {
                     state.isLocked = true;
-                    state.selectedMode = null;
+                    if (state.selectedMode !== 'memo') {
+                        state.selectedMode = null;
+                    }
                     render();
                 }, 10 * 60 * 1000); 
             }
@@ -560,7 +553,6 @@
             if (!user || !db) return;
 
             document.getElementById('confirmMessage').textContent = `ID「${sid}」で新しくカレンダーを作成しますか？\n\n※すでに登録済みのIDを開く場合は「読込する」ボタンを押してください。`;
-            // 設定モーダルを一旦隠して確認モーダルを出す
             document.getElementById('settingsModal').classList.remove('active');
             document.getElementById('confirmModal').classList.add('active');
             
@@ -583,11 +575,12 @@
                         state.password = pwd;
                         
                         state.attendance = {}; state.markers = {}; state.attendance_B = {}; state.markers_B = {};
-                        state.requiredDays = {}; state.notes = {}; state.wishLeaves = {};
+                        state.notes = {}; state.notes_B = {};
+                        state.requiredDays = {}; state.wishLeaves = {};
                         
                         const data = { 
                             password: pwd, attendance: state.attendance, markers: state.markers, attendance_B: state.attendance_B,
-                            markers_B: state.markers_B, requiredDays: state.requiredDays, notes: state.notes, wishLeaves: state.wishLeaves,
+                            markers_B: state.markers_B, notes: state.notes, notes_B: state.notes_B, requiredDays: state.requiredDays, wishLeaves: state.wishLeaves,
                             settings: state.settings, updatedAt: new Date().toISOString() 
                         };
                         await setDoc(docRef, data);
@@ -659,7 +652,8 @@
 
                     state.attendance = data.attendance || {}; state.markers = data.markers || {};
                     state.attendance_B = data.attendance_B || {}; state.markers_B = data.markers_B || {};
-                    state.requiredDays = data.requiredDays || {}; state.notes = data.notes || {}; 
+                    state.notes = data.notes || {}; state.notes_B = data.notes_B || {};
+                    state.requiredDays = data.requiredDays || {}; 
                     state.wishLeaves = data.wishLeaves || {};
                     state.settings = data.settings || { email1: '', email2: '', senderName: '', leaveDays: 0, leaveBaseMonth: 4, leaveBaseDay: 1 };
                     render();
@@ -679,8 +673,9 @@
             localStorage.setItem('markersData', JSON.stringify(state.markers));
             localStorage.setItem('attendanceData_B', JSON.stringify(state.attendance_B));
             localStorage.setItem('markersData_B', JSON.stringify(state.markers_B));
-            localStorage.setItem('requiredDaysData', JSON.stringify(state.requiredDays));
             localStorage.setItem('notesData', JSON.stringify(state.notes));
+            localStorage.setItem('notesData_B', JSON.stringify(state.notes_B));
+            localStorage.setItem('requiredDaysData', JSON.stringify(state.requiredDays));
             localStorage.setItem('wishLeavesData', JSON.stringify(state.wishLeaves));
             localStorage.setItem('settingsData', JSON.stringify(state.settings));
             localStorage.setItem('currentPattern', state.currentPattern);
@@ -694,7 +689,8 @@
                 password: state.password || '', 
                 attendance: state.attendance, markers: state.markers, 
                 attendance_B: state.attendance_B, markers_B: state.markers_B,
-                requiredDays: state.requiredDays, notes: state.notes, 
+                notes: state.notes, notes_B: state.notes_B,
+                requiredDays: state.requiredDays, 
                 wishLeaves: state.wishLeaves, settings: state.settings,
                 updatedAt: new Date().toISOString() 
             };
@@ -759,7 +755,7 @@
                     }
                 }
             }
-            return { used: usedLeaves, total: totalLeaveDays };
+            return { used: usedLeaves, total: totalLeaveDays, start: startBaseDate };
         }
 
         function initMonthDataIfEmpty(start, end) {
@@ -892,7 +888,9 @@
             const leaveDisplay = document.getElementById('leaveUsageDisplay');
             if (leaveStatus) {
                 const remaining = leaveStatus.total - leaveStatus.used;
-                leaveDisplay.textContent = `有給残数: ${remaining}日 (消化: ${leaveStatus.used}/${leaveStatus.total}日)`;
+                const s = leaveStatus.start;
+                const startStr = `${s.getFullYear().toString().slice(-2)}/${s.getMonth()+1}/${s.getDate()}`;
+                leaveDisplay.textContent = `有休残: ${remaining}日 (消化${leaveStatus.used}/${leaveStatus.total}) [${startStr}~]`;
                 leaveDisplay.style.display = 'block';
             } else {
                 leaveDisplay.style.display = 'none';
@@ -930,7 +928,7 @@
             const fill = counts.w+counts.l+counts.o+counts.po; 
             if (fill!==counts.t) { const d=document.createElement('div'); d.className='error-message'; d.textContent=`未入力が ${counts.t-fill}日 あります。`; v.appendChild(d); }
             if(req>0){ 
-                const act = counts.w + counts.l; 
+                const act = counts.w; 
                 if(act<req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`不足: ${req-act}日`; v.appendChild(d); }
                 else if(act>req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`超過: ${act-req}日`; v.appendChild(d); } 
             }
@@ -944,18 +942,38 @@
             });
 
             document.querySelectorAll('.stat-item[data-mode]').forEach(el => el.classList.toggle('active-mode', el.dataset.mode===state.selectedMode));
-            document.getElementById('noboriBtn').classList.toggle('active-tool', state.selectedMode==='nobori');
-            document.getElementById('memoModeBtn').classList.toggle('active-tool', state.selectedMode==='memo');
+            
+            const noboriBtn = document.getElementById('noboriBtn');
+            if (noboriBtn) noboriBtn.classList.toggle('active-tool', state.selectedMode==='nobori');
+            const memoModeBtn = document.getElementById('memoModeBtn');
+            if (memoModeBtn) memoModeBtn.classList.toggle('active-tool', state.selectedMode==='memo');
         }
 
-        function openMemoModal(dateKey) {
+        function openMemoModal(dateKey, isReadOnly = false) {
             currentMemoKey = dateKey;
-            const existingNote = state.notes[dateKey] || "";
+            const existingNote = getNotes()[dateKey] || "";
             document.getElementById('modalTitle').textContent = `${dateKey} の予定`;
-            document.getElementById('memoInput').value = existingNote;
+            
+            const memoInput = document.getElementById('memoInput');
+            memoInput.value = existingNote;
+            
+            const saveBtn = document.getElementById('memoSaveBtn');
+            const cancelBtn = document.getElementById('memoCancelBtn');
+            
+            if (isReadOnly) {
+                memoInput.readOnly = true;
+                saveBtn.style.display = 'none';
+                cancelBtn.textContent = '閉じる';
+            } else {
+                memoInput.readOnly = false;
+                saveBtn.style.display = 'block';
+                cancelBtn.textContent = 'キャンセル';
+            }
             
             document.getElementById('memoModal').classList.add('active');
-            document.getElementById('memoInput').focus();
+            if (!isReadOnly) {
+                memoInput.focus();
+            }
         }
 
         function createDayCell(dateObj, holMap, isOutside, counts = null, todayKey = null, warningDates = new Set()) {
@@ -965,7 +983,7 @@
             
             const s = att[k];
             const hol = holMap[k];
-            const n = state.notes[k];
+            const n = getNotes()[k];
             const m = mar[k];
             const wl = state.wishLeaves[k];
             
@@ -1016,16 +1034,18 @@
             }
 
             cell.onclick = () => { 
-                if (state.isLocked) return;
+                if (state.isLocked) {
+                    if (state.selectedMode === 'memo') {
+                        openMemoModal(k, true);
+                    }
+                    return;
+                }
+                
                 resetAutoLockTimer(); 
                 if (!state.selectedMode) return; 
 
                 if (state.selectedMode === 'memo') {
-                    openMemoModal(k);
-                } else if (state.selectedMode === 'wish_leave') {
-                    if (state.wishLeaves[k]) delete state.wishLeaves[k];
-                    else state.wishLeaves[k] = true;
-                    save(); render();
+                    openMemoModal(k, false);
                 } else if (state.selectedMode === 'nobori') {
                     if (mar[k]) delete mar[k]; else mar[k] = true;
                     save(); render();
@@ -1033,13 +1053,8 @@
                     if (state.selectedMode) {
                         if (att[k] === state.selectedMode) delete att[k];
                         else att[k] = state.selectedMode;
-                    } else {
-                        const cycle = [null, 'work', 'leave', 'off', 'public_off'];
-                        const curIdx = cycle.indexOf(att[k] || null);
-                        const nextStatus = cycle[(curIdx + 1) % cycle.length];
-                        if (nextStatus) att[k] = nextStatus; else delete att[k];
+                        save(); render();
                     }
-                    save(); render();
                 }
             };
             
@@ -1067,7 +1082,9 @@
 
         safeAddEventListener('lockBtn', 'click', () => { 
             state.isLocked = true; 
-            state.selectedMode = null; 
+            if (state.selectedMode !== 'memo') {
+                state.selectedMode = null; 
+            }
             clearTimeout(autoLockTimer);
             render(); 
         });
@@ -1123,7 +1140,6 @@
         if (yearSelect) yearSelect.onchange = renderRequiredDaysForm;
 
         safeAddEventListener('settingsBtn', 'click', () => {
-            if (state.isLocked) return;
             resetAutoLockTimer();
             document.getElementById('senderNameInput').value = state.settings.senderName || '';
             document.getElementById('email1Input').value = state.settings.email1 || '';
@@ -1171,7 +1187,6 @@
             save(); render(); closeSettings();
         });
 
-        // 月度リセット (設定モーダル内から呼ばれる)
         safeAddEventListener('resetAllBtn', 'click', () => {
             resetAutoLockTimer();
             const endMonth = state.currentStartDate.getMonth() + 2 > 12 ? (state.currentStartDate.getMonth() + 2) - 12 : state.currentStartDate.getMonth() + 2;
@@ -1180,7 +1195,6 @@
             const confirmMsg = document.getElementById('confirmMessage');
             if (confirmMsg) confirmMsg.textContent = `「${endMonth}月度 (パターン${pLabel})」を初期状態（平日出勤・土日祝休み）にリセットしますか？\n（予定は残ります）`;
             
-            // 設定モーダルを一旦隠す
             const settingsModal = document.getElementById('settingsModal');
             if (settingsModal) settingsModal.classList.remove('active');
             
@@ -1200,7 +1214,6 @@
             };
         });
 
-        // オールクリア
         safeAddEventListener('allClearBtn', 'click', () => {
             const settingsModal = document.getElementById('settingsModal');
             if (settingsModal) settingsModal.classList.remove('active');
@@ -1213,7 +1226,7 @@
             
             confirmCallback = () => {
                 state.attendance = {}; state.markers = {}; state.attendance_B = {}; state.markers_B = {};
-                state.notes = {}; state.wishLeaves = {}; state.requiredDays = {};
+                state.notes = {}; state.notes_B = {}; state.wishLeaves = {}; state.requiredDays = {};
                 save(true); render();
             };
         });
@@ -1241,17 +1254,16 @@
             const memoInput = document.getElementById('memoInput');
             if (memoInput) {
                 const v = memoInput.value.trim(); 
-                if(v) state.notes[currentMemoKey] = v; else delete state.notes[currentMemoKey]; 
+                const notes = getNotes();
+                if(v) notes[currentMemoKey] = v; else delete notes[currentMemoKey]; 
                 save(); render(); 
             }
             const memoModal = document.getElementById('memoModal');
             if (memoModal) memoModal.classList.remove('active'); 
         });
         
-        // 出力機能
         safeAddEventListener('copyTextBtn', 'click', (e) => { 
             e.preventDefault(); 
-            if (state.isLocked) return;
             resetAutoLockTimer();
 
             const s = new Date(state.currentStartDate);
@@ -1265,7 +1277,6 @@
             
             while(loop <= end){ 
                 const k = formatDateKey(loop); 
-                // 希望休(wishLeaves)が設定されている日 または 有休(現在のパターンのleave) を抽出
                 if(state.wishLeaves[k] || att[k] === 'leave') { 
                     const day = loop.getDay();
                     const hol = holMap[k] ? ` 祝日：${holMap[k]}` : '';
