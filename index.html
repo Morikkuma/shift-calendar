@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>勤務管理カレンダー v1.67 (出力確認・表示変更版)</title>
+    <title>勤務管理カレンダー v1.71</title>
     <style>
         /* --- Google Fonts --- */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
@@ -68,10 +68,6 @@
         .period-label-wrapper { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 2px; }
         .period-label { font-size: 1.1rem; font-weight: 700; color: var(--primary-work-dark); margin: 0; }
         
-        .pattern-switch { display: flex; background-color: #f0f0f0; border-radius: 12px; padding: 2px; }
-        .pattern-btn { border: none; background: transparent; padding: 4px 10px; font-size: 0.75rem; font-weight: 700; border-radius: 10px; cursor: pointer; color: #888; transition: all 0.2s; }
-        .pattern-btn.active { background-color: var(--primary-work-dark); color: #fff; box-shadow: var(--shadow-sm); }
-
         .month-title { font-size: 0.8rem; font-weight: 500; color: var(--text-sub); margin: 0; }
         .nav-btn { background: none; border: none; cursor: pointer; width: 44px; height: 44px; border-radius: 50%; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--text-main); }
         
@@ -81,7 +77,7 @@
         .sync-status-main.saved { background-color: var(--status-ok-bg); color: var(--status-ok-text); }
         .sync-status-main.error { background-color: var(--status-error-bg); color: var(--status-error-text); }
 
-        /* ツールバー (横スクロール) */
+        /* ツールバー */
         .toolbar { 
             display: flex; gap: 8px; padding: 10px 16px; background-color: #fff; 
             border-bottom: 1px solid #f0f0f0; overflow-x: auto; 
@@ -95,7 +91,6 @@
         }
         .tool-btn.active-tool { background-color: #fff3e0; border-color: #ffb74d; color: #f57c00; box-shadow: inset 0 0 0 1px #ffb74d;}
         
-        /* ロック中の一部のボタンのみ無効化 */
         .toolbar.locked #noboriBtn, .toolbar.locked #resetAllBtn { opacity: 0.5; pointer-events: none; }
 
         /* 統計エリア */
@@ -128,6 +123,7 @@
         .stat-label-count { font-size: 0.6rem; color: var(--text-sub); font-weight: 700; white-space: nowrap; margin-bottom: 2px;}
         .stat-value { font-size: 1rem; font-weight: 700; line-height: 1; }
         .stat-work { color: var(--primary-work-dark); }
+        .stat-wish { color: var(--accent-wish); }
         .stat-off { color: var(--accent-off-dark); }
         .stat-public-off { color: #d32f2f; }
         .stat-leave { color: var(--accent-leave-dark); }
@@ -158,6 +154,8 @@
         
         .day-cell.is-holiday, .day-cell.is-sun { font-weight: 700; }
         .day-cell.is-today { border: 2px solid var(--text-sub); }
+
+        .day-cell.is-wish-leave { box-shadow: inset 0 0 0 3px var(--accent-wish); }
 
         .day-date { font-size: 0.8rem; font-weight: 700; margin-bottom: 1px; }
 
@@ -219,6 +217,33 @@
         .settings-label { font-size: 0.85rem; font-weight: 700; color: var(--text-main); flex-shrink: 0; min-width: 80px;}
 
         #copyStatusMsg { background-color: rgba(46, 125, 50, 0.9); color: white; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 2000; padding: 12px 24px; border-radius: 30px; display: none; box-shadow: var(--shadow-md); font-weight: 700; font-size: 0.9rem;}
+        
+        /* 管理者テーブル用スタイル */
+        #adminTable th, #adminTable td {
+            border: 1px solid #ddd;
+            padding: 8px 4px;
+            min-width: 32px;
+            vertical-align: middle;
+        }
+        #adminTable th:first-child, #adminTable td:first-child {
+            position: sticky;
+            left: 0;
+            background: #fff;
+            z-index: 1;
+            font-weight: bold;
+            min-width: 70px;
+            box-shadow: 2px 0 4px rgba(0,0,0,0.05);
+            text-align: left;
+            padding-left: 8px;
+        }
+        #adminTable th:first-child {
+            background: #f0f0f0;
+            z-index: 3;
+        }
+        .admin-cell-work { background-color: var(--primary-work); color: #fff; }
+        .admin-cell-leave { background-color: var(--accent-leave); color: #fff; }
+        .admin-cell-off { background-color: var(--accent-off); color: #fff; }
+        .admin-cell-public_off { background-color: var(--accent-public-off); color: #fff; }
     </style>
 </head>
 <body>
@@ -230,10 +255,6 @@
             <div class="title-group">
                 <div class="period-label-wrapper">
                     <div class="period-label" id="periodLabel"></div>
-                    <div class="pattern-switch">
-                        <button class="pattern-btn" id="patternA">A</button>
-                        <button class="pattern-btn" id="patternB">B</button>
-                    </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <h2 class="month-title" id="currentPeriodDisplay">読み込み中...</h2>
@@ -259,6 +280,9 @@
             </div>
             <div class="stat-item" id="modeWork" data-mode="work">
                 <span class="stat-label-count">出勤</span><span class="stat-value stat-work" id="workCount">0</span>
+            </div>
+            <div class="stat-item" id="modeWishLeave" data-mode="wish_leave">
+                <span class="stat-label-count">希望休</span><span class="stat-value stat-wish">-</span>
             </div>
             <div class="stat-item" id="modeLeave" data-mode="leave">
                 <span class="stat-label-count">有休</span><span class="stat-value stat-leave" id="leaveCount">0</span>
@@ -292,14 +316,11 @@
         </div>
     </div>
 
-    <!-- コピー完了メッセージ -->
-    <div id="copyStatusMsg"></div>
-
     <!-- メモ用モーダル -->
     <div class="modal-overlay" id="memoModal">
         <div class="modal-content" style="max-height: 50vh;">
             <div id="modalTitle" style="font-weight:700; margin-bottom:10px; font-size:1.1rem; color:var(--primary-work-dark)"></div>
-            <textarea id="memoInput" class="modal-textarea" placeholder="予定やメモを入力 (例: 早番, 13-22, リーダー など)"></textarea>
+            <textarea id="memoInput" class="modal-textarea" placeholder="予定やメモを入力 (例: 早番, 13-22 など)"></textarea>
             <div style="display:flex;justify-content:flex-end;gap:12px;">
                 <button class="modal-btn cancel" id="memoCancelBtn">閉じる</button>
                 <button class="modal-btn save" id="memoSaveBtn">保存する</button>
@@ -320,6 +341,20 @@
         </div>
     </div>
 
+    <!-- 管理者パスワード入力モーダル -->
+    <div class="modal-overlay" id="adminAuthModal" style="z-index: 2500;">
+        <div class="modal-content">
+            <h3 style="margin-top:0; font-size: 1.1rem; color: var(--primary-work-dark);">管理者認証</h3>
+            <p style="font-size: 0.8rem; color: #666; margin-bottom: 8px;">パスワードを入力してください。</p>
+            <input type="password" id="adminAuthPasswordInput" class="modal-input" placeholder="パスワード">
+            <div id="adminAuthError" style="color: var(--status-error-text); font-size: 0.8rem; display: none; margin-bottom: 8px;">パスワードが間違っています。</div>
+            <div style="display:flex;justify-content:flex-end;gap:12px;">
+                <button class="modal-btn cancel" id="adminAuthCancelBtn">キャンセル</button>
+                <button class="modal-btn save" id="adminAuthLoginBtn">ログイン</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 設定用モーダル (ボトムシート) -->
     <div class="modal-overlay" id="settingsModal" style="align-items: flex-start; padding-top: 4vh; overflow-y: auto;">
         <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
@@ -331,14 +366,14 @@
             <!-- 同期設定 -->
             <div class="settings-section">
                 <h4>☁️ データ共有・同期</h4>
-                <p style="font-size:0.75rem; color:#666; margin-bottom:10px;">他の端末とカレンダーを共有するためのIDと鍵です。</p>
+                <p style="font-size:0.75rem; color:#666; margin-bottom:10px;">他の端末とカレンダーを共有するためのIDとパスワードです。</p>
                 <div style="display: flex; gap: 8px; margin-bottom: 8px;">
                     <input type="text" id="shareIdInput" class="modal-input" placeholder="共有ID" style="flex: 1;">
                     <input type="password" id="passwordInput" class="modal-input" placeholder="パスワード" style="flex: 1;">
                 </div>
                 <div style="display:flex; gap:8px;">
                     <button id="registerBtn" class="modal-btn" style="flex:1; background-color:#e3f2fd; color:#1565c0; border: 1px solid #bbdefb;">新規登録</button>
-                    <button id="connectBtn" class="modal-btn" style="flex:1; background-color:#e8f5e9; color:#2e7d32; border: 1px solid #c8e6c9;">読込する</button>
+                    <button id="connectBtn" class="modal-btn" style="flex:1; background-color:#e8f5e9; color:#2e7d32; border: 1px solid #c8e6c9;">ログイン</button>
                 </div>
                 <div id="debugError" style="font-size: 10px; color: red; margin-top: 4px; display: none;"></div>
             </div>
@@ -383,24 +418,6 @@
             </div>
 
             <hr style="border:none; border-top:1px solid #eee; margin:20px 0;">
-
-            <!-- 所定日数 -->
-            <div class="settings-section">
-                <h4>📅 所定日数の一括設定</h4>
-                <select id="yearSelect" class="modal-input" style="margin-bottom: 12px; font-weight:700;">
-                    <option value="2025">2025年度 (25年4月度〜26年3月度)</option>
-                    <option value="2026">2026年度 (26年4月度〜27年3月度)</option>
-                    <option value="2027">2027年度 (27年4月度〜28年3月度)</option>
-                    <option value="2028">2028年度 (28年4月度〜29年3月度)</option>
-                    <option value="2029">2029年度 (29年4月度〜30年3月度)</option>
-                    <option value="2030">2030年度 (30年4月度〜31年3月度)</option>
-                </select>
-                <div id="requiredDaysFormGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <!-- JSで動的生成 -->
-                </div>
-            </div>
-
-            <hr style="border:none; border-top:1px solid #eee; margin:20px 0;">
             
             <!-- データ管理 -->
             <div class="settings-section">
@@ -414,36 +431,70 @@
             <div style="display:flex; gap:12px; margin-top:30px;">
                 <button class="modal-btn save" id="settingsSaveBtn">設定を保存して閉じる</button>
             </div>
+
+            <!-- 管理者モードの隠しボタン (一番下右端) -->
+            <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
+                <button id="openAdminBtn" style="background: transparent; border: none; color: #e0e0e0; font-size: 0.6rem; cursor: pointer; padding: 4px;">Ka</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理者用モーダル（全画面） -->
+    <div class="modal-overlay" id="adminModal" style="align-items: center; padding: 0;">
+        <div class="modal-content" style="width: 100%; height: 100%; max-width: none; border-radius: 0; display: flex; flex-direction: column; padding: 16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; flex-shrink: 0;">
+                <h3 style="margin:0; font-size: 1.2rem; color: var(--primary-work-dark);">👑 管理者モード (一覧表示)</h3>
+                <button class="modal-btn cancel" style="padding: 6px 12px; margin:0;" id="adminCloseBtn">✕ 閉じる</button>
+            </div>
+
+            <!-- 月度切替 -->
+            <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 16px; flex-shrink: 0;">
+                <button class="nav-btn" id="adminPrevBtn">❮</button>
+                <div style="text-align: center; margin: 0 16px;">
+                    <div class="period-label" id="adminPeriodLabel"></div>
+                    <div class="month-title" id="adminCurrentPeriodDisplay"></div>
+                </div>
+                <button class="nav-btn" id="adminNextBtn">❯</button>
+            </div>
+
+            <!-- 一覧テーブル (flex-growで伸ばす) -->
+            <div style="flex-grow: 1; overflow: auto; border: 1px solid #ddd; border-radius: 8px; background: #fff; margin-bottom: 16px; min-height: 200px;">
+                <table id="adminTable" style="width: 100%; border-collapse: collapse; text-align: center; white-space: nowrap; font-size: 0.75rem;">
+                    <thead id="adminTableHeader" style="position: sticky; top: 0; background: #f0f0f0; z-index: 2;">
+                        <!-- JSで生成 -->
+                    </thead>
+                    <tbody id="adminTableBody">
+                        <!-- JSで生成 -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 一括設定エリア (年間入力に変更) - 下に配置 -->
+            <div style="background: #fafafa; padding: 12px; border-radius: 8px; border: 1px solid #eee; flex-shrink: 0;">
+                <h4 style="margin: 0 0 8px 0; font-size: 0.9rem; color: #d32f2f;">📅 所定日数 年間一括設定 (全員に適用)</h4>
+                <select id="adminYearSelect" class="modal-input" style="margin: 0 0 12px 0; padding: 6px;">
+                    <option value="2025">2025年度 (25年4月度〜26年3月度)</option>
+                    <option value="2026">2026年度 (26年4月度〜27年3月度)</option>
+                    <option value="2027">2027年度 (27年4月度〜28年3月度)</option>
+                    <option value="2028">2028年度 (28年4月度〜29年3月度)</option>
+                    <option value="2029">2029年度 (29年4月度〜30年3月度)</option>
+                    <option value="2030">2030年度 (30年4月度〜31年3月度)</option>
+                </select>
+                <div id="adminRequiredDaysFormGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                    <!-- JSで動的生成 -->
+                </div>
+                <div style="display: flex; justify-content: flex-end;">
+                    <button class="modal-btn danger" id="adminBatchApplyBtn" style="padding: 6px 16px; font-size: 0.85rem; margin: 0;">全員に一括適用</button>
+                </div>
+            </div>
+
         </div>
     </div>
     
-    <!-- 確認用モーダル -->
-    <div class="modal-overlay" id="confirmModal">
-        <div class="modal-content" style="max-height: 40vh;">
-            <h3 style="margin-top:0;">最終確認</h3>
-            <div id="confirmMessage" style="margin-bottom:20px; font-size:0.95rem; line-height:1.4;"></div>
-            <div style="display:flex;justify-content:flex-end;gap:12px;">
-                <button class="modal-btn cancel" id="confirmCancelBtn">やめる</button>
-                <button class="modal-btn danger" id="confirmOkBtn" style="flex:1;">実行する</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- メッセージアラート用モーダル -->
-    <div class="modal-overlay" id="alertModal">
-        <div class="modal-content" style="max-height: 40vh;">
-            <h3 id="alertTitle" style="margin-top:0; color:var(--status-error-text);">お知らせ</h3>
-            <div id="alertMessage" style="margin-bottom:24px; font-size:0.95rem; white-space:pre-wrap; line-height:1.5;"></div>
-            <div style="display:flex;">
-                <button class="modal-btn save" onclick="document.getElementById('alertModal').classList.remove('active')" style="width:100%;">OK</button>
-            </div>
-        </div>
-    </div>
-
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
         import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, deleteDoc } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyDQ3fJpKeoQ6-mjsQGni8YlI8NH-Dp-JE0",
@@ -471,29 +522,16 @@
 
         const state = {
             currentStartDate: new Date(),
-            currentPattern: localStorage.getItem('currentPattern') || 'A',
-            
             password: localStorage.getItem('lastPassword') || '',
-
             attendance: safeParse('attendanceData', {}),
             markers: safeParse('markersData', {}), 
-            attendance_B: safeParse('attendanceData_B', {}),
-            markers_B: safeParse('markersData_B', {}), 
-            
             notes: safeParse('notesData', {}),
-            notes_B: safeParse('notesData_B', {}),
-
             requiredDays: safeParse('requiredDaysData', {}),
             wishLeaves: safeParse('wishLeavesData', {}), 
             settings: safeParse('settingsData', { email1: '', email2: '', senderName: '', leaveDays: 0, leaveBaseMonth: 4, leaveBaseDay: 1 }), 
-            
             selectedMode: null,
             isLocked: true 
         };
-
-        const getAtt = () => state.currentPattern === 'A' ? state.attendance : state.attendance_B;
-        const getMar = () => state.currentPattern === 'A' ? state.markers : state.markers_B;
-        const getNotes = () => state.currentPattern === 'A' ? state.notes : state.notes_B;
 
         function formatDateKey(d) { return `${d.getFullYear()}-${('0'+(d.getMonth()+1)).slice(-2)}-${('0'+d.getDate()).slice(-2)}`; }
         function initDate() { const today = new Date(); if (today.getDate() <= 15) state.currentStartDate = new Date(today.getFullYear(), today.getMonth()-1, 16); else state.currentStartDate = new Date(today.getFullYear(), today.getMonth(), 16); }
@@ -501,7 +539,9 @@
         function showAlert(msg, title = 'お知らせ') {
             document.getElementById('alertTitle').textContent = title;
             document.getElementById('alertMessage').textContent = msg;
-            document.getElementById('alertModal').classList.add('active');
+            const alertModal = document.getElementById('alertModal');
+            alertModal.style.zIndex = "3000"; 
+            alertModal.classList.add('active');
         }
 
         function updateSyncStatus(text, statusClass) {
@@ -566,9 +606,12 @@
             if (!sid || !pwd) { showAlert("IDとパスワードの両方を入力してください。"); return; }
             if (!user || !db) return;
 
-            document.getElementById('confirmMessage').textContent = `ID「${sid}」で新しくカレンダーを作成しますか？\n\n※すでに登録済みのIDを開く場合は「読込する」ボタンを押してください。`;
+            document.getElementById('confirmMessage').textContent = `ID「${sid}」で新しくカレンダーを作成しますか？\n\n※すでに登録済みのIDを開く場合は「ログイン」ボタンを押してください。`;
             document.getElementById('settingsModal').classList.remove('active');
-            document.getElementById('confirmModal').classList.add('active');
+            
+            const confirmModal = document.getElementById('confirmModal');
+            confirmModal.style.zIndex = "3000";
+            confirmModal.classList.add('active');
             
             confirmCallback = async () => {
                 if (unsubscribeDoc) unsubscribeDoc();
@@ -588,13 +631,12 @@
                         localStorage.setItem('lastPassword', pwd);
                         state.password = pwd;
                         
-                        state.attendance = {}; state.markers = {}; state.attendance_B = {}; state.markers_B = {};
-                        state.notes = {}; state.notes_B = {};
-                        state.requiredDays = {}; state.wishLeaves = {};
+                        state.attendance = {}; state.markers = {}; 
+                        state.notes = {}; state.requiredDays = {}; state.wishLeaves = {};
                         
                         const data = { 
-                            password: pwd, attendance: state.attendance, markers: state.markers, attendance_B: state.attendance_B,
-                            markers_B: state.markers_B, notes: state.notes, notes_B: state.notes_B, requiredDays: state.requiredDays, wishLeaves: state.wishLeaves,
+                            password: pwd, attendance: state.attendance, markers: state.markers, 
+                            notes: state.notes, requiredDays: state.requiredDays, wishLeaves: state.wishLeaves,
                             settings: state.settings, updatedAt: new Date().toISOString() 
                         };
                         await setDoc(docRef, data);
@@ -607,6 +649,7 @@
             };
         });
 
+        // ログイン（読込）ボタンの処理
         safeAddEventListener('connectBtn', 'click', async () => {
             const sid = document.getElementById('shareIdInput').value.trim();
             const pwd = document.getElementById('passwordInput').value.trim();
@@ -621,7 +664,7 @@
                 const docSnap = await getDoc(docRef);
                 
                 if (!docSnap.exists()) {
-                    showAlert("登録されていないIDです。\nIDに間違いがないか確認してください。");
+                    showAlert("指定されたIDは見つかりません。\n初めての場合は「新規登録」を押してください。");
                     updateSyncStatus("エラー", "error");
                 } else {
                     const data = docSnap.data();
@@ -659,14 +702,13 @@
                     if (state.password !== serverPwd) {
                         isCloudActive = false;
                         if (unsubscribeDoc) unsubscribeDoc();
-                        showAlert("パスワードの認証に失敗しました。\n正しいパスワードを入力して「読込」をやり直してください。");
+                        showAlert("パスワードの認証に失敗しました。\n正しいパスワードを入力して「ログイン」をやり直してください。");
                         updateSyncStatus("認証エラー", "error");
                         return;
                     }
 
                     state.attendance = data.attendance || {}; state.markers = data.markers || {};
-                    state.attendance_B = data.attendance_B || {}; state.markers_B = data.markers_B || {};
-                    state.notes = data.notes || {}; state.notes_B = data.notes_B || {};
+                    state.notes = data.notes || {}; 
                     state.requiredDays = data.requiredDays || {}; 
                     state.wishLeaves = data.wishLeaves || {};
                     state.settings = data.settings || { email1: '', email2: '', senderName: '', leaveDays: 0, leaveBaseMonth: 4, leaveBaseDay: 1 };
@@ -685,14 +727,10 @@
         function save(immediate = false) {
             localStorage.setItem('attendanceData', JSON.stringify(state.attendance));
             localStorage.setItem('markersData', JSON.stringify(state.markers));
-            localStorage.setItem('attendanceData_B', JSON.stringify(state.attendance_B));
-            localStorage.setItem('markersData_B', JSON.stringify(state.markers_B));
             localStorage.setItem('notesData', JSON.stringify(state.notes));
-            localStorage.setItem('notesData_B', JSON.stringify(state.notes_B));
             localStorage.setItem('requiredDaysData', JSON.stringify(state.requiredDays));
             localStorage.setItem('wishLeavesData', JSON.stringify(state.wishLeaves));
             localStorage.setItem('settingsData', JSON.stringify(state.settings));
-            localStorage.setItem('currentPattern', state.currentPattern);
             
             if (!isCloudActive || !user) return;
             const sid = document.getElementById('shareIdInput').value;
@@ -702,14 +740,13 @@
             const data = { 
                 password: state.password || '', 
                 attendance: state.attendance, markers: state.markers, 
-                attendance_B: state.attendance_B, markers_B: state.markers_B,
-                notes: state.notes, notes_B: state.notes_B,
+                notes: state.notes, 
                 requiredDays: state.requiredDays, 
                 wishLeaves: state.wishLeaves, settings: state.settings,
                 updatedAt: new Date().toISOString() 
             };
             if (saveTimeout) clearTimeout(saveTimeout);
-            const doSave = () => { setDoc(docRef, data).catch(err => showError("保存エラー")); };
+            const doSave = () => { setDoc(docRef, data, { merge: true }).catch(err => showError("保存エラー")); };
             if (immediate) doSave(); else saveTimeout = setTimeout(doSave, 800);
         }
 
@@ -759,8 +796,7 @@
             }
 
             let usedLeaves = 0;
-            const att = getAtt();
-            for (const [key, val] of Object.entries(att)) {
+            for (const [key, val] of Object.entries(state.attendance)) {
                 if (val === 'leave') {
                     const [y, m, d] = key.split('-').map(Number);
                     const dateObj = new Date(y, m - 1, d);
@@ -775,9 +811,8 @@
         function initMonthDataIfEmpty(start, end) {
             let hasData = false;
             let l = new Date(start);
-            const att = getAtt();
             while(l <= end){
-                if(att[formatDateKey(l)]) { hasData = true; break; }
+                if(state.attendance[formatDateKey(l)]) { hasData = true; break; }
                 l.setDate(l.getDate()+1);
             }
             if(!hasData) {
@@ -786,8 +821,8 @@
                 while(l <= end){
                     const k = formatDateKey(l);
                     const day = l.getDay();
-                    if(day === 0 || day === 6 || h[k]) att[k] = 'off'; 
-                    else att[k] = 'work';
+                    if(day === 0 || day === 6 || h[k]) state.attendance[k] = 'off'; 
+                    else state.attendance[k] = 'work';
                     l.setDate(l.getDate()+1);
                 }
                 save(); 
@@ -797,24 +832,22 @@
         function checkNoboriAlerts(start, end) {
             const alerts = [];
             let loop = new Date(start);
-            const att = getAtt();
-            const mar = getMar();
             while(loop <= end) {
                 const k = formatDateKey(loop);
-                const currentStatus = att[k];
-                const hasMarker = mar[k];
+                const currentStatus = state.attendance[k];
+                const hasMarker = state.markers[k];
 
                 if (currentStatus === 'work' && !hasMarker) {
                     const next = new Date(loop);
                     next.setDate(loop.getDate() + 1);
                     const nextK = formatDateKey(next);
-                    const nextStatus = att[nextK];
-                    const nextMarker = mar[nextK];
+                    const nextStatus = state.attendance[nextK];
+                    const nextMarker = state.markers[nextK];
                     
                     const isDepartureDay = (nextStatus === 'work' && !nextMarker);
                     if (!isDepartureDay) {
                         const prev = new Date(loop); prev.setDate(loop.getDate() - 1);
-                        const prevStatus = att[formatDateKey(prev)];
+                        const prevStatus = state.attendance[formatDateKey(prev)];
                         if (prevStatus && prevStatus !== 'work') {
                             alerts.push({ msg: `${loop.getDate()}日 出勤？` });
                         }
@@ -824,13 +857,13 @@
                      const prev = new Date(loop); prev.setDate(loop.getDate() - 1);
                      const prev2 = new Date(loop); prev2.setDate(loop.getDate() - 2);
                      const pk = formatDateKey(prev), pk2 = formatDateKey(prev2);
-                     if (att[pk] === 'work' && !mar[pk] && att[pk2] === 'work' && !mar[pk2]) {
+                     if (state.attendance[pk] === 'work' && !state.markers[pk] && state.attendance[pk2] === 'work' && !state.markers[pk2]) {
                          alerts.push({ msg: `${loop.getDate()}日 出勤？(3連)` });
                      }
                 }
                 if (currentStatus !== 'work') {
                     const next = new Date(loop); next.setDate(loop.getDate() + 1);
-                    if (!att[formatDateKey(next)] && checkIsLoading(loop)) {
+                    if (!state.attendance[formatDateKey(next)] && checkIsLoading(loop)) {
                          alerts.push({ msg: `${loop.getDate()}日 確認` });
                     }
                 }
@@ -840,13 +873,12 @@
         }
 
         function checkIsLoading(currentDate) {
-            const att = getAtt(); const mar = getMar();
             for (let i = 1; i <= 7; i++) {
                 const prev = new Date(currentDate); prev.setDate(currentDate.getDate() - i);
                 const prevK = formatDateKey(prev);
-                if (att[prevK] === 'work' || att[prevK] === 'leave' || att[prevK] === 'off') {
-                    if (mar[prevK]) return true; 
-                    if (att[prevK] === 'work' && !mar[prevK]) return false; 
+                if (state.attendance[prevK] === 'work' || state.attendance[prevK] === 'leave' || state.attendance[prevK] === 'off') {
+                    if (state.markers[prevK]) return true; 
+                    if (state.attendance[prevK] === 'work' && !state.markers[prevK]) return false; 
                 }
             }
             return false;
@@ -855,26 +887,25 @@
         function getWarningDates(start, end) {
             const warnings = new Set();
             let loop = new Date(start);
-            const att = getAtt(); const mar = getMar();
             while(loop <= end) {
                 const k = formatDateKey(loop);
-                if (att[k] === 'work' && !mar[k]) {
+                if (state.attendance[k] === 'work' && !state.markers[k]) {
                      const next = new Date(loop); next.setDate(loop.getDate() + 1);
-                     if (!(att[formatDateKey(next)] === 'work' && !mar[formatDateKey(next)])) {
+                     if (!(state.attendance[formatDateKey(next)] === 'work' && !state.markers[formatDateKey(next)])) {
                          const prev = new Date(loop); prev.setDate(loop.getDate() - 1);
                          const prevK = formatDateKey(prev);
-                         if (att[prevK] && att[prevK] !== 'work') warnings.add(prevK);
+                         if (state.attendance[prevK] && state.attendance[prevK] !== 'work') warnings.add(prevK);
                      }
                 }
-                if (att[k] === 'work' && !mar[k]) {
+                if (state.attendance[k] === 'work' && !state.markers[k]) {
                      const prev = new Date(loop); prev.setDate(loop.getDate() - 1);
                      const prev2 = new Date(loop); prev2.setDate(loop.getDate() - 2);
                      const pk = formatDateKey(prev), pk2 = formatDateKey(prev2);
-                     if (att[pk] === 'work' && !mar[pk] && att[pk2] === 'work' && !mar[pk2]) warnings.add(k);
+                     if (state.attendance[pk] === 'work' && !state.markers[pk] && state.attendance[pk2] === 'work' && !state.markers[pk2]) warnings.add(k);
                 }
-                if (att[k] !== 'work') {
+                if (state.attendance[k] !== 'work') {
                     const next = new Date(loop); next.setDate(loop.getDate() + 1);
-                    if (!att[formatDateKey(next)] && checkIsLoading(loop)) warnings.add(k);
+                    if (!state.attendance[formatDateKey(next)] && checkIsLoading(loop)) warnings.add(k);
                 }
                 loop.setDate(loop.getDate() + 1);
             }
@@ -882,9 +913,6 @@
         }
 
         function render() {
-            document.getElementById('patternA').classList.toggle('active', state.currentPattern === 'A');
-            document.getElementById('patternB').classList.toggle('active', state.currentPattern === 'B');
-
             updateLockStateUI();
             const grid = document.getElementById('calendarGrid'); grid.innerHTML = '';
             const start = new Date(state.currentStartDate), end = new Date(start.getFullYear(), start.getMonth()+1, 15);
@@ -941,6 +969,7 @@
             const v = document.getElementById('statusMessageContainer'); v.innerHTML = ''; document.getElementById('totalDaysDisplay').textContent = `全体: ${counts.t}日`;
             const fill = counts.w+counts.l+counts.o+counts.po; 
             if (fill!==counts.t) { const d=document.createElement('div'); d.className='error-message'; d.textContent=`未入力が ${counts.t-fill}日 あります。`; v.appendChild(d); }
+            
             if(req>0){ 
                 const act = counts.w; 
                 if(act<req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`出勤日数不足: ${req-act}日`; v.appendChild(d); }
@@ -965,7 +994,7 @@
 
         function openMemoModal(dateKey, isReadOnly = false) {
             currentMemoKey = dateKey;
-            const existingNote = getNotes()[dateKey] || "";
+            const existingNote = state.notes[dateKey] || "";
             document.getElementById('modalTitle').textContent = `${dateKey} の予定`;
             
             const memoInput = document.getElementById('memoInput');
@@ -992,13 +1021,10 @@
 
         function createDayCell(dateObj, holMap, isOutside, counts = null, todayKey = null, warningDates = new Set()) {
             const k = formatDateKey(dateObj);
-            const att = getAtt();
-            const mar = getMar();
-            
-            const s = att[k];
+            const s = state.attendance[k];
             const hol = holMap[k];
-            const n = getNotes()[k];
-            const m = mar[k];
+            const n = state.notes[k];
+            const m = state.markers[k];
             const wl = state.wishLeaves[k];
             
             const cell = document.createElement('div'); 
@@ -1060,15 +1086,25 @@
 
                 if (state.selectedMode === 'memo') {
                     openMemoModal(k, false);
+                } else if (state.selectedMode === 'wish_leave') {
+                    if (state.wishLeaves[k]) delete state.wishLeaves[k];
+                    else state.wishLeaves[k] = true;
+                    save(); render();
                 } else if (state.selectedMode === 'nobori') {
-                    if (mar[k]) delete mar[k]; else mar[k] = true;
+                    if (state.markers[k]) delete state.markers[k]; 
+                    else state.markers[k] = true;
                     save(); render();
                 } else if (!isOutside) {
                     if (state.selectedMode) {
-                        if (att[k] === state.selectedMode) delete att[k];
-                        else att[k] = state.selectedMode;
-                        save(); render();
+                        if (state.attendance[k] === state.selectedMode) delete state.attendance[k];
+                        else state.attendance[k] = state.selectedMode;
+                    } else {
+                        const cycle = [null, 'work', 'leave', 'off', 'public_off'];
+                        const curIdx = cycle.indexOf(state.attendance[k] || null);
+                        const nextStatus = cycle[(curIdx + 1) % cycle.length];
+                        if (nextStatus) state.attendance[k] = nextStatus; else delete state.attendance[k];
                     }
+                    save(); render();
                 }
             };
             
@@ -1109,8 +1145,6 @@
             resetAutoLockTimer();
         });
 
-        safeAddEventListener('patternA', 'click', () => { state.currentPattern = 'A'; localStorage.setItem('currentPattern', 'A'); render(); });
-        safeAddEventListener('patternB', 'click', () => { state.currentPattern = 'B'; localStorage.setItem('currentPattern', 'B'); render(); });
         safeAddEventListener('prevBtn', 'click', () => { state.currentStartDate.setMonth(state.currentStartDate.getMonth()-1); render(); });
         safeAddEventListener('nextBtn', 'click', () => { state.currentStartDate.setMonth(state.currentStartDate.getMonth()+1); render(); });
         
@@ -1128,14 +1162,14 @@
             }
         }
 
-        let tempRequiredDays = {};
-        const yearSelect = document.getElementById('yearSelect');
-        const reqDaysGrid = document.getElementById('requiredDaysFormGrid');
+        let adminTempRequiredDays = {}; 
+        const adminYearSelect = document.getElementById('adminYearSelect');
+        const adminReqDaysGrid = document.getElementById('adminRequiredDaysFormGrid');
 
-        function renderRequiredDaysForm() {
-            if (!yearSelect || !reqDaysGrid) return;
-            const y = yearSelect.value;
-            reqDaysGrid.innerHTML = '';
+        function renderAdminRequiredDaysForm() {
+            if (!adminYearSelect || !adminReqDaysGrid) return;
+            const y = adminYearSelect.value;
+            adminReqDaysGrid.innerHTML = '';
             const months = [4,5,6,7,8,9,10,11,12,1,2,3];
             months.forEach(m => {
                 const key = getMonthKey(y, m);
@@ -1145,13 +1179,16 @@
                 const label = document.createElement('span'); label.style.fontSize = '0.85rem'; label.textContent = `${m}月度:`;
                 const input = document.createElement('input'); input.type = 'number'; input.className = 'modal-input';
                 input.style.width = '60px'; input.style.margin = '0'; input.style.padding = '4px';
-                input.value = tempRequiredDays[key] || '';
-                input.oninput = (e) => { if (e.target.value) tempRequiredDays[key] = parseInt(e.target.value); else delete tempRequiredDays[key]; };
+                input.value = adminTempRequiredDays[key] || '';
+                input.oninput = (e) => { 
+                    if (e.target.value) adminTempRequiredDays[key] = parseInt(e.target.value); 
+                    else delete adminTempRequiredDays[key]; 
+                };
                 
-                div.appendChild(label); div.appendChild(input); reqDaysGrid.appendChild(div);
+                div.appendChild(label); div.appendChild(input); adminReqDaysGrid.appendChild(div);
             });
         }
-        if (yearSelect) yearSelect.onchange = renderRequiredDaysForm;
+        if (adminYearSelect) adminYearSelect.onchange = renderAdminRequiredDaysForm;
 
         safeAddEventListener('settingsBtn', 'click', () => {
             resetAutoLockTimer();
@@ -1163,19 +1200,6 @@
             document.getElementById('leaveBaseMonthInput').value = state.settings.leaveBaseMonth || 4;
             document.getElementById('leaveBaseDayInput').value = state.settings.leaveBaseDay || 1;
             
-            tempRequiredDays = { ...state.requiredDays };
-            
-            const currentEnd = new Date(state.currentStartDate.getFullYear(), state.currentStartDate.getMonth() + 1, 15);
-            const m = currentEnd.getMonth() + 1;
-            const y = currentEnd.getFullYear();
-            const targetYear = (m >= 4) ? y : y - 1;
-            
-            if (yearSelect) {
-                if (targetYear >= 2025 && targetYear <= 2030) yearSelect.value = targetYear;
-                else yearSelect.value = 2025;
-            }
-            
-            renderRequiredDaysForm();
             const modal = document.getElementById('settingsModal');
             if (modal) modal.classList.add('active');
         });
@@ -1196,32 +1220,31 @@
             state.settings.leaveBaseMonth = parseInt(document.getElementById('leaveBaseMonthInput').value) || 4;
             state.settings.leaveBaseDay = parseInt(document.getElementById('leaveBaseDayInput').value) || 1;
             
-            state.requiredDays = { ...tempRequiredDays };
-            
             save(); render(); closeSettings();
         });
 
         safeAddEventListener('resetAllBtn', 'click', () => {
             resetAutoLockTimer();
             const endMonth = state.currentStartDate.getMonth() + 2 > 12 ? (state.currentStartDate.getMonth() + 2) - 12 : state.currentStartDate.getMonth() + 2;
-            const pLabel = state.currentPattern;
             
             const confirmMsg = document.getElementById('confirmMessage');
-            if (confirmMsg) confirmMsg.textContent = `「${endMonth}月度 (パターン${pLabel})」を初期状態（平日出勤・土日祝休み）にリセットしますか？\n（予定は残ります）`;
+            if (confirmMsg) confirmMsg.textContent = `「${endMonth}月度」を初期状態（平日出勤・土日祝休み）にリセットしますか？\n（予定は残ります）`;
             
             const settingsModal = document.getElementById('settingsModal');
             if (settingsModal) settingsModal.classList.remove('active');
             
             const confirmModal = document.getElementById('confirmModal');
-            if (confirmModal) confirmModal.classList.add('active');
+            if (confirmModal) {
+                confirmModal.style.zIndex = "3000";
+                confirmModal.classList.add('active');
+            }
             
             confirmCallback = () => {
                 const s = new Date(state.currentStartDate), e = new Date(s.getFullYear(), s.getMonth()+1, 15);
-                const att = getAtt(); const mar = getMar();
                 let l = new Date(s);
                 while(l <= e){
                     const k = formatDateKey(l);
-                    delete att[k]; delete mar[k]; delete state.wishLeaves[k]; 
+                    delete state.attendance[k]; delete state.markers[k]; delete state.wishLeaves[k]; 
                     l.setDate(l.getDate()+1);
                 }
                 save(true); render();
@@ -1233,14 +1256,17 @@
             if (settingsModal) settingsModal.classList.remove('active');
             
             const confirmMsg = document.getElementById('confirmMessage');
-            if (confirmMsg) confirmMsg.textContent = `【警告】すべてのデータ（A/B両パターンのシフト、予定、希望休など）を完全に消去しますか？\n※設定は残ります。この操作は取り消せません。`;
+            if (confirmMsg) confirmMsg.textContent = `【警告】すべてのデータ（シフト、予定、希望休など）を完全に消去しますか？\n※設定は残ります。この操作は取り消せません。`;
             
             const confirmModal = document.getElementById('confirmModal');
-            if (confirmModal) confirmModal.classList.add('active');
+            if (confirmModal) {
+                confirmModal.style.zIndex = "3000";
+                confirmModal.classList.add('active');
+            }
             
             confirmCallback = () => {
-                state.attendance = {}; state.markers = {}; state.attendance_B = {}; state.markers_B = {};
-                state.notes = {}; state.notes_B = {}; state.wishLeaves = {}; state.requiredDays = {};
+                state.attendance = {}; state.markers = {}; 
+                state.notes = {}; state.wishLeaves = {}; state.requiredDays = {};
                 save(true); render();
             };
         });
@@ -1268,14 +1294,242 @@
             const memoInput = document.getElementById('memoInput');
             if (memoInput) {
                 const v = memoInput.value.trim(); 
-                const notes = getNotes();
-                if(v) notes[currentMemoKey] = v; else delete notes[currentMemoKey]; 
+                if(v) state.notes[currentMemoKey] = v; else delete state.notes[currentMemoKey]; 
                 save(); render(); 
             }
             const memoModal = document.getElementById('memoModal');
             if (memoModal) memoModal.classList.remove('active'); 
         });
         
+        // 管理者機能
+        let adminData = [];
+        let adminUnsubscribe = null;
+        let adminStartDate = new Date();
+
+        safeAddEventListener('openAdminBtn', 'click', () => {
+            document.getElementById('adminAuthPasswordInput').value = '';
+            document.getElementById('adminAuthError').style.display = 'none';
+            document.getElementById('adminAuthModal').classList.add('active');
+        });
+
+        safeAddEventListener('adminAuthCancelBtn', 'click', () => {
+            document.getElementById('adminAuthModal').classList.remove('active');
+        });
+
+        safeAddEventListener('adminAuthLoginBtn', 'click', () => {
+            const pw = document.getElementById('adminAuthPasswordInput').value;
+            if (pw === 'ka1234') {
+                document.getElementById('adminAuthModal').classList.remove('active');
+                
+                const settingsModal = document.getElementById('settingsModal');
+                if(settingsModal) settingsModal.classList.remove('active');
+                
+                const adminModal = document.getElementById('adminModal');
+                if(adminModal) adminModal.classList.add('active');
+                
+                adminStartDate = new Date(state.currentStartDate);
+
+                adminTempRequiredDays = {};
+                const currentEnd = new Date(state.currentStartDate.getFullYear(), state.currentStartDate.getMonth() + 1, 15);
+                const m = currentEnd.getMonth() + 1;
+                const y = currentEnd.getFullYear();
+                const targetYear = (m >= 4) ? y : y - 1;
+                
+                if (adminYearSelect) {
+                    if (targetYear >= 2025 && targetYear <= 2030) adminYearSelect.value = targetYear;
+                    else adminYearSelect.value = 2025;
+                    renderAdminRequiredDaysForm();
+                }
+
+                loadAdminData();
+            } else {
+                document.getElementById('adminAuthError').style.display = 'block';
+            }
+        });
+
+        safeAddEventListener('adminCloseBtn', 'click', () => {
+            const adminModal = document.getElementById('adminModal');
+            if(adminModal) adminModal.classList.remove('active');
+            if (adminUnsubscribe) {
+                adminUnsubscribe();
+                adminUnsubscribe = null;
+            }
+        });
+
+        safeAddEventListener('adminPrevBtn', 'click', () => { adminStartDate.setMonth(adminStartDate.getMonth()-1); renderAdminTable(); });
+        safeAddEventListener('adminNextBtn', 'click', () => { adminStartDate.setMonth(adminStartDate.getMonth()+1); renderAdminTable(); });
+
+        function loadAdminData() {
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'shifts');
+            const tbody = document.getElementById('adminTableBody');
+            if (tbody) tbody.innerHTML = '<tr><td colspan="32">データ読み込み中...</td></tr>';
+
+            if (adminUnsubscribe) adminUnsubscribe();
+            
+            adminUnsubscribe = onSnapshot(colRef, (snapshot) => {
+                adminData = [];
+                snapshot.forEach(docSnap => {
+                    adminData.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                renderAdminTable();
+            }, (err) => {
+                console.error(err);
+                showAlert("管理者データの取得に失敗しました。");
+            });
+        }
+
+        function renderAdminTable() {
+            const start = new Date(adminStartDate);
+            const end = new Date(start.getFullYear(), start.getMonth()+1, 15);
+            const mLabel = end.getMonth() + 1;
+            
+            const adminPeriodLabel = document.getElementById('adminPeriodLabel');
+            if (adminPeriodLabel) adminPeriodLabel.textContent = `${mLabel}月度`;
+            
+            const adminCurrentPeriodDisplay = document.getElementById('adminCurrentPeriodDisplay');
+            if (adminCurrentPeriodDisplay) adminCurrentPeriodDisplay.textContent = `${start.getFullYear()}年${start.getMonth()+1}月${start.getDate()}日 - ${end.getMonth()+1}月${end.getDate()}日`;
+
+            const thead = document.getElementById('adminTableHeader');
+            const tbody = document.getElementById('adminTableBody');
+            if (!thead || !tbody) return;
+            
+            let headHtml = '<tr><th>名前<br>(ID / PW)</th>';
+            let loop = new Date(start);
+            const days = ['日','月','火','水','木','金','土'];
+            const dateKeys = [];
+            while (loop <= end) {
+                const k = formatDateKey(loop);
+                dateKeys.push(k);
+                const dayStr = days[loop.getDay()];
+                let thStyle = "";
+                if(loop.getDay() === 0) thStyle = "color: #d32f2f;";
+                else if(loop.getDay() === 6) thStyle = "color: #1565c0;";
+                headHtml += `<th style="${thStyle}">${loop.getDate()}<br>${dayStr}</th>`;
+                loop.setDate(loop.getDate()+1);
+            }
+            headHtml += '<th>所定</th><th>出勤</th><th>有休</th><th>公休</th><th>操作</th></tr>';
+            thead.innerHTML = headHtml;
+
+            let bodyHtml = '';
+            adminData.sort((a, b) => {
+                const nameA = (a.settings && a.settings.senderName) ? a.settings.senderName : a.id;
+                const nameB = (b.settings && b.settings.senderName) ? b.settings.senderName : b.id;
+                return nameA.localeCompare(nameB);
+            });
+
+            adminData.forEach(userData => {
+                const dispName = (userData.settings && userData.settings.senderName) ? userData.settings.senderName : userData.id;
+                const dispPw = userData.password || '未設定';
+                let rowHtml = `<tr><td><div style="font-weight:bold; font-size:0.8rem;">${dispName}</div><div style="font-size:0.6rem; color:#888;">ID: ${userData.id}<br>PW: ${dispPw}</div></td>`;
+                
+                const att = userData.attendance || {};
+                const mar = userData.markers || {};
+                const wl = userData.wishLeaves || {};
+                
+                let cWork = 0, cLeave = 0, cOff = 0;
+
+                dateKeys.forEach(k => {
+                    const s = att[k];
+                    const isMarker = mar[k];
+                    const isWish = wl[k];
+                    
+                    let cellClass = '';
+                    let cellText = '';
+                    if (s === 'work') { cellClass = 'admin-cell-work'; cellText = '出'; cWork++; }
+                    else if (s === 'leave') { cellClass = 'admin-cell-leave'; cellText = '有'; cLeave++; }
+                    else if (s === 'off') { cellClass = 'admin-cell-off'; cellText = '休'; cOff++; }
+                    else if (s === 'public_off') { cellClass = 'admin-cell-public_off'; cellText = '法'; cOff++; }
+
+                    let extStyle = '';
+                    if (isWish) extStyle = 'border: 2px solid var(--accent-wish); box-sizing: border-box;';
+                    if (isMarker) cellText += '●';
+
+                    rowHtml += `<td class="${cellClass}" style="${extStyle}">${cellText}</td>`;
+                });
+
+                const reqK = formatDateKey(start);
+                const reqDays = userData.requiredDays ? (userData.requiredDays[reqK] || '-') : '-';
+
+                rowHtml += `<td>${reqDays}</td><td style="font-weight:bold;">${cWork}</td><td style="font-weight:bold; color:var(--accent-leave-dark)">${cLeave}</td><td style="color:#666">${cOff}</td>`;
+                rowHtml += `<td><button class="modal-btn danger admin-del-btn" style="padding: 4px 8px; font-size: 0.7rem; margin: 0 auto;" data-id="${userData.id}">削除</button></td></tr>`;
+                bodyHtml += rowHtml;
+            });
+
+            if (adminData.length === 0) {
+                bodyHtml = '<tr><td colspan="32">データがありません</td></tr>';
+            }
+
+            tbody.innerHTML = bodyHtml;
+
+            const delBtns = document.querySelectorAll('.admin-del-btn');
+            delBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const delId = e.target.getAttribute('data-id');
+                    const confirmMsg = document.getElementById('confirmMessage');
+                    if (confirmMsg) confirmMsg.textContent = `アカウント「${delId}」のすべてのデータを完全に消去しますか？\nこの操作は取り消せません。`;
+                    
+                    const confirmModal = document.getElementById('confirmModal');
+                    if (confirmModal) {
+                        confirmModal.style.zIndex = "3000"; 
+                        confirmModal.classList.add('active');
+                    }
+                    
+                    confirmCallback = async () => {
+                        try {
+                            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shifts', delId);
+                            await deleteDoc(docRef);
+                            showAlert(`アカウント「${delId}」を削除しました。`);
+                        } catch (err) {
+                            showError("削除エラー: " + err.message);
+                        }
+                    };
+                });
+            });
+        }
+
+        safeAddEventListener('adminBatchApplyBtn', 'click', () => {
+            const confirmMsg = document.getElementById('confirmMessage');
+            if (confirmMsg) confirmMsg.textContent = `入力された所定日数を、登録されている全員のアカウントに一括適用しますか？\n（現在の各個人の設定は上書きされます）`;
+            
+            const confirmModal = document.getElementById('confirmModal');
+            if (confirmModal) {
+                confirmModal.style.zIndex = "3000";
+                confirmModal.classList.add('active');
+            }
+
+            confirmCallback = async () => {
+                const applyBtn = document.getElementById('adminBatchApplyBtn');
+                if (applyBtn) {
+                    applyBtn.disabled = true;
+                    applyBtn.textContent = '処理中...';
+                }
+                
+                try {
+                    const promises = adminData.map(userData => {
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shifts', userData.id);
+                        const currentReqDays = userData.requiredDays || {};
+                        for (const key in adminTempRequiredDays) {
+                            currentReqDays[key] = adminTempRequiredDays[key];
+                        }
+                        return setDoc(docRef, {
+                            requiredDays: currentReqDays,
+                            updatedAt: new Date().toISOString() 
+                        }, { merge: true });
+                    });
+                    
+                    await Promise.all(promises);
+                    showAlert(`全員の所定日数を一括更新しました！`);
+                } catch(e) {
+                    showError("一括更新エラー: " + e.message);
+                } finally {
+                    if (applyBtn) {
+                        applyBtn.disabled = false;
+                        applyBtn.textContent = '全員に一括適用';
+                    }
+                }
+            };
+        });
+
         // グローバルにメール情報を持たせる
         let currentMailTo = "";
         let currentMailSubject = "";
@@ -1290,14 +1544,13 @@
             const end = new Date(s.getFullYear(), s.getMonth()+1, 15);
             const weekChars = ['日','月','火','水','木','金','土'];
             const holMap = Holidays.getMap(s, end);
-            const att = getAtt();
             
             let datesList = '';
             let loop = new Date(s);
             
             while(loop <= end){ 
                 const k = formatDateKey(loop); 
-                if(state.wishLeaves[k] || att[k] === 'leave') { 
+                if(state.wishLeaves[k] || state.attendance[k] === 'leave') { 
                     const day = loop.getDay();
                     let dayType = "";
                     if (holMap[k]) {
@@ -1338,7 +1591,6 @@
             currentMailSubject = subject;
             currentMailBody = body;
 
-            // モーダルに表示
             const previewArea = document.getElementById('mailBodyPreview');
             if (previewArea) {
                 previewArea.value = `件名: ${currentMailSubject}\n\n${currentMailBody}`;
@@ -1358,7 +1610,6 @@
             const modal = document.getElementById('mailConfirmModal');
             if (modal) modal.classList.remove('active');
 
-            // クリップボードにコピー
             const dummy = document.createElement("textarea"); document.body.appendChild(dummy);
             dummy.value = currentMailBody; dummy.select(); document.execCommand("copy"); document.body.removeChild(dummy);
 
