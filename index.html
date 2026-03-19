@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>勤務管理カレンダー v1.66 (機能改善版)</title>
+    <title>勤務管理カレンダー v1.67 (出力確認・表示変更版)</title>
     <style>
         /* --- Google Fonts --- */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
@@ -299,10 +299,23 @@
     <div class="modal-overlay" id="memoModal">
         <div class="modal-content" style="max-height: 50vh;">
             <div id="modalTitle" style="font-weight:700; margin-bottom:10px; font-size:1.1rem; color:var(--primary-work-dark)"></div>
-            <textarea id="memoInput" class="modal-textarea" placeholder="予定やメモを入力 (例: 早番, 13-22 など)"></textarea>
+            <textarea id="memoInput" class="modal-textarea" placeholder="予定やメモを入力 (例: 早番, 13-22, リーダー など)"></textarea>
             <div style="display:flex;justify-content:flex-end;gap:12px;">
                 <button class="modal-btn cancel" id="memoCancelBtn">閉じる</button>
                 <button class="modal-btn save" id="memoSaveBtn">保存する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- メール確認用モーダル -->
+    <div class="modal-overlay" id="mailConfirmModal">
+        <div class="modal-content" style="max-height: 80vh; display: flex; flex-direction: column;">
+            <h3 style="margin-top:0; font-size: 1.1rem; color:var(--primary-work-dark)">メール内容の確認</h3>
+            <p style="font-size: 0.8rem; color: #666; margin-bottom: 8px;">以下の内容でメールを作成します。（本文は自動的にコピーされます）</p>
+            <textarea id="mailBodyPreview" class="modal-textarea" style="flex-grow: 1; min-height: 200px; font-size: 0.9rem;" readonly></textarea>
+            <div style="display:flex;justify-content:flex-end;gap:12px; margin-top: 12px;">
+                <button class="modal-btn cancel" id="mailConfirmCancelBtn">キャンセル</button>
+                <button class="modal-btn save" id="mailConfirmSendBtn">メール作成</button>
             </div>
         </div>
     </div>
@@ -459,6 +472,7 @@
         const state = {
             currentStartDate: new Date(),
             currentPattern: localStorage.getItem('currentPattern') || 'A',
+            
             password: localStorage.getItem('lastPassword') || '',
 
             attendance: safeParse('attendanceData', {}),
@@ -467,7 +481,7 @@
             markers_B: safeParse('markersData_B', {}), 
             
             notes: safeParse('notesData', {}),
-            notes_B: safeParse('notesData_B', {}), // パターンB用のメモ追加
+            notes_B: safeParse('notesData_B', {}),
 
             requiredDays: safeParse('requiredDaysData', {}),
             wishLeaves: safeParse('wishLeavesData', {}), 
@@ -929,8 +943,8 @@
             if (fill!==counts.t) { const d=document.createElement('div'); d.className='error-message'; d.textContent=`未入力が ${counts.t-fill}日 あります。`; v.appendChild(d); }
             if(req>0){ 
                 const act = counts.w; 
-                if(act<req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`不足: ${req-act}日`; v.appendChild(d); }
-                else if(act>req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`超過: ${act-req}日`; v.appendChild(d); } 
+                if(act<req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`出勤日数不足: ${req-act}日`; v.appendChild(d); }
+                else if(act>req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`所定日数超過: ${act-req}日`; v.appendChild(d); } 
             }
             
             const alerts = checkNoboriAlerts(start, end);
@@ -1262,8 +1276,14 @@
             if (memoModal) memoModal.classList.remove('active'); 
         });
         
+        // グローバルにメール情報を持たせる
+        let currentMailTo = "";
+        let currentMailSubject = "";
+        let currentMailBody = "";
+
         safeAddEventListener('copyTextBtn', 'click', (e) => { 
             e.preventDefault(); 
+            if (state.isLocked) return;
             resetAutoLockTimer();
 
             const s = new Date(state.currentStartDate);
@@ -1279,8 +1299,17 @@
                 const k = formatDateKey(loop); 
                 if(state.wishLeaves[k] || att[k] === 'leave') { 
                     const day = loop.getDay();
-                    const hol = holMap[k] ? ` 祝日：${holMap[k]}` : '';
-                    datesList += `・${loop.getMonth()+1}/${loop.getDate()}(${weekChars[day]})${hol}\n`; 
+                    let dayType = "";
+                    if (holMap[k]) {
+                        dayType = "祝日";
+                    } else if (day === 0) {
+                        dayType = "日曜日";
+                    } else if (day === 6) {
+                        dayType = "土曜日";
+                    } else {
+                        dayType = "平日";
+                    }
+                    datesList += `・${loop.getMonth()+1}月${loop.getDate()}日${weekChars[day]}曜日（${dayType}）\n`; 
                 } 
                 loop.setDate(loop.getDate()+1); 
             } 
@@ -1305,10 +1334,35 @@
             const subject = `希望休申請 ${end.getMonth()+1}月度${senderName}`;
             const body = `お疲れ様です。\n下記にて、休みをいただきたく申請いたします。\n\n【${end.getMonth()+1}月度 】\n${datesList}\nお手数をおかけしますが、よろしくお願いいたします。`;
 
-            const dummy = document.createElement("textarea"); document.body.appendChild(dummy);
-            dummy.value = body; dummy.select(); document.execCommand("copy"); document.body.removeChild(dummy);
+            currentMailTo = toList.join(',');
+            currentMailSubject = subject;
+            currentMailBody = body;
 
-            const mailtoUrl = `mailto:${toList.join(',')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            // モーダルに表示
+            const previewArea = document.getElementById('mailBodyPreview');
+            if (previewArea) {
+                previewArea.value = `件名: ${currentMailSubject}\n\n${currentMailBody}`;
+            }
+            const mailConfirmModal = document.getElementById('mailConfirmModal');
+            if (mailConfirmModal) {
+                mailConfirmModal.classList.add('active');
+            }
+        });
+
+        safeAddEventListener('mailConfirmCancelBtn', 'click', () => {
+            const modal = document.getElementById('mailConfirmModal');
+            if (modal) modal.classList.remove('active');
+        });
+
+        safeAddEventListener('mailConfirmSendBtn', 'click', () => {
+            const modal = document.getElementById('mailConfirmModal');
+            if (modal) modal.classList.remove('active');
+
+            // クリップボードにコピー
+            const dummy = document.createElement("textarea"); document.body.appendChild(dummy);
+            dummy.value = currentMailBody; dummy.select(); document.execCommand("copy"); document.body.removeChild(dummy);
+
+            const mailtoUrl = `mailto:${currentMailTo}?subject=${encodeURIComponent(currentMailSubject)}&body=${encodeURIComponent(currentMailBody)}`;
             const ua = navigator.userAgent.toLowerCase();
             const isAppBrowser = ua.indexOf('line') > -1 || ua.indexOf('instagram') > -1;
 
