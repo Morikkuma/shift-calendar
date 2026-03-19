@@ -147,6 +147,8 @@
         .day-cell.is-sat { color: #1565c0; }
         .day-cell.outside-month { opacity: 0.3; background-color: #f5f5f5; box-shadow: none;}
         
+        .day-cell:active { transform: scale(0.95); transition: transform 0.1s; }
+        
         .day-cell.status-work { background-color: var(--primary-work); color: #fff; box-shadow: none;}
         .day-cell.status-leave { background-color: var(--accent-leave); color: #fff; box-shadow: none;}
         .day-cell.status-off { background-color: var(--accent-off); color: #fff; box-shadow: none;}
@@ -252,7 +254,7 @@
         <!-- 月度ヘッダー -->
         <div class="header">
             <button class="nav-btn" id="prevBtn">❮</button>
-            <div class="title-group">
+            <div class="title-group" id="titleGroup" style="cursor: pointer;" title="タップで今月に戻る">
                 <div class="period-label-wrapper">
                     <div class="period-label" id="periodLabel"></div>
                 </div>
@@ -268,7 +270,7 @@
         <div class="toolbar locked" id="mainToolbar">
             <button class="tool-btn" id="noboriBtn">🚚 拠点積</button>
             <button class="tool-btn" id="memoModeBtn">📝 予定</button>
-            <button class="tool-btn" id="copyTextBtn">📋 休み申請</button>
+            <button class="tool-btn" id="copyTextBtn">📋 休暇申請</button>
             <button class="tool-btn" id="settingsBtn">⚙️ 設定</button>
         </div>
 
@@ -1116,11 +1118,11 @@
                 } else if (state.selectedMode === 'wish_leave') {
                     if (state.wishLeaves[k]) delete state.wishLeaves[k];
                     else state.wishLeaves[k] = true;
-                    save(); render();
+                    save(true); render();
                 } else if (state.selectedMode === 'nobori') {
                     if (state.markers[k]) delete state.markers[k]; 
                     else state.markers[k] = true;
-                    save(); render();
+                    save(true); render();
                 } else if (!isOutside) {
                     if (state.selectedMode) {
                         if (state.attendance[k] === state.selectedMode) delete state.attendance[k];
@@ -1131,7 +1133,7 @@
                         const nextStatus = cycle[(curIdx + 1) % cycle.length];
                         if (nextStatus) state.attendance[k] = nextStatus; else delete state.attendance[k];
                     }
-                    save(); render();
+                    save(true); render();
                 }
             };
             
@@ -1174,6 +1176,8 @@
 
         safeAddEventListener('prevBtn', 'click', () => { state.currentStartDate.setMonth(state.currentStartDate.getMonth()-1); render(); });
         safeAddEventListener('nextBtn', 'click', () => { state.currentStartDate.setMonth(state.currentStartDate.getMonth()+1); render(); });
+        
+        safeAddEventListener('titleGroup', 'click', () => { initDate(); render(); });
         
         const monthSelect = document.getElementById('leaveBaseMonthInput');
         if (monthSelect) {
@@ -1323,7 +1327,7 @@
             if (memoInput) {
                 const v = memoInput.value.trim(); 
                 if(v) state.notes[currentMemoKey] = v; else delete state.notes[currentMemoKey]; 
-                save(); render(); 
+                save(true); render(); 
             }
             const memoModal = document.getElementById('memoModal');
             if (memoModal) memoModal.classList.remove('active'); 
@@ -1435,7 +1439,7 @@
                 headHtml += `<th style="${thStyle}">${loop.getDate()}<br>${dayStr}</th>`;
                 loop.setDate(loop.getDate()+1);
             }
-            headHtml += '<th>所定</th><th>出勤</th><th>有休</th><th>公休</th><th>操作</th></tr>';
+            headHtml += '<th>所定</th><th>出勤</th><th>有休</th><th>休み</th><th>操作</th></tr>';
             thead.innerHTML = headHtml;
 
             let bodyHtml = '';
@@ -1595,7 +1599,7 @@
                         dayType = "平日";
                         prefix = "〇";
                     }
-                    datesList += `${prefix}${loop.getMonth()+1}月${loop.getDate()}日${weekChars[day]}曜日（${dayType}）\n`; 
+                    datesList += `${prefix} ${loop.getMonth()+1}月${loop.getDate()}日 ${weekChars[day]}曜日（${dayType}）\n`; 
                 } 
                 loop.setDate(loop.getDate()+1); 
             } 
@@ -1618,7 +1622,7 @@
 
             const senderName = state.settings.senderName ? `  ${state.settings.senderName}` : '';
             const subject = `休暇申請   ${end.getMonth()+1}月度${senderName}`;
-            const body = `お疲れ様です。\n下記にて私用のため休暇申請いたします。\n\n【${end.getMonth()+1}月度 】\n${datesList}\nよろしくお願いいたします。`;
+            const body = `お疲れ様です。\n下記にて私用のため休暇申請及び、\n所定日数超過調整いたします。\n\n【${end.getMonth()+1}月度 】\n${datesList}\nよろしくお願いいたします。`;
 
             currentMailTo = toList.join(',');
             currentMailSubject = subject;
