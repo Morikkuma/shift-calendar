@@ -1268,6 +1268,11 @@
             document.getElementById('calendarGrid').appendChild(cell);
         }
 
+        // 月移動・今月へ戻るボタンのイベントリスナー復元
+        safeAddEventListener('prevBtn', 'click', () => { state.currentStartDate.setMonth(state.currentStartDate.getMonth()-1); render(); });
+        safeAddEventListener('nextBtn', 'click', () => { state.currentStartDate.setMonth(state.currentStartDate.getMonth()+1); render(); });
+        safeAddEventListener('titleGroup', 'click', () => { initDate(); render(); });
+
         const monthSelect = document.getElementById('leaveBaseMonthInput');
         if (monthSelect) {
             for(let i=1; i<=12; i++) {
