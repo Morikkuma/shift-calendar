@@ -251,7 +251,7 @@
         .day-cell.status-public-off { background-color: var(--accent-public-off); color: #fff !important; box-shadow: none; }
 
         .day-cell.is-holiday, .day-cell.is-sun { font-weight: 700; }
-        .day-cell.is-today { border: 2px solid var(--text-sub); }
+        .day-cell.is-today { border: 3px solid #000; }
         .day-cell.is-wish-leave { box-shadow: inset 0 0 0 3px var(--accent-wish) !important; }
 
         .day-date { font-size: 0.8rem; font-weight: 700; margin-bottom: 1px; }
@@ -1135,7 +1135,7 @@
             if (fill!==counts.t) { const d=document.createElement('div'); d.className='error-message'; d.textContent=`未入力が ${counts.t-fill}日 あります。`; v.appendChild(d); }
             
             if(req>0){ 
-                const act = counts.w; 
+                const act = counts.w + counts.l; 
                 if(act<req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`出勤日数不足: ${req-act}日`; v.appendChild(d); }
                 else if(act>req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`所定日数超過: ${act-req}日`; v.appendChild(d); } 
             }
@@ -1712,7 +1712,7 @@
 
             const senderName = state.settings.senderName ? `  ${state.settings.senderName}` : '';
             const subject = `休暇申請   ${end.getMonth()+1}月度${senderName}`;
-            const body = `お疲れ様です。\n下記にて私用のため休暇申請及び、\n所定日数超過調整いたします。\n\n【${end.getMonth()+1}月度 】\n${datesList}\nよろしくお願いいたします。`;
+            const body = `お疲れ様です。\n下記にて所定日数超過調整いたします。\n\n【${end.getMonth()+1}月度 】\n${datesList}\nよろしくお願いいたします。`;
 
             currentMailTo = toList.join(',');
             currentMailSubject = subject;
