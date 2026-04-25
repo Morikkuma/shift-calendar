@@ -1135,9 +1135,14 @@
             if (fill!==counts.t) { const d=document.createElement('div'); d.className='error-message'; d.textContent=`未入力が ${counts.t-fill}日 あります。`; v.appendChild(d); }
             
             if(req>0){ 
-                const act = counts.w + counts.l; 
-                if(act<req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`出勤日数不足: ${req-act}日`; v.appendChild(d); }
-                else if(act>req){ const d=document.createElement('div'); d.className='error-message'; d.textContent=`所定日数超過: ${act-req}日`; v.appendChild(d); } 
+                const actForShortage = counts.w + counts.l; 
+                const actForExcess = counts.w;
+                if(actForShortage < req){ 
+                    const d=document.createElement('div'); d.className='error-message'; d.textContent=`出勤日数不足: ${req - actForShortage}日`; v.appendChild(d); 
+                }
+                else if(actForExcess > req){ 
+                    const d=document.createElement('div'); d.className='error-message'; d.textContent=`所定日数超過: ${actForExcess - req}日`; v.appendChild(d); 
+                } 
             }
             
             const alerts = checkNoboriAlerts(start, end);
@@ -1486,7 +1491,7 @@
         function loadAdminData() {
             const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'shifts');
             const tbody = document.getElementById('adminTableBody');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="32">データ読み込み中...</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="37">データ読み込み中...</td></tr>';
 
             if (adminUnsubscribe) adminUnsubscribe();
             
@@ -1580,7 +1585,7 @@
             });
 
             if (adminData.length === 0) {
-                bodyHtml = '<tr><td colspan="32">データがありません</td></tr>';
+                bodyHtml = '<tr><td colspan="37">データがありません</td></tr>';
             }
 
             tbody.innerHTML = bodyHtml;
