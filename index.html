@@ -7,21 +7,20 @@
     <style>
         /* --- Google Fonts --- */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
-
+        
         :root {
             --bg-color: #f0f2f5;
             --card-bg: #ffffff;
             --text-main: #333333;
             --text-sub: #777777;
-            --primary-work: #a7d7c5;      
-            --primary-work-dark: #7fb5a1; 
-            --accent-off: #ffb7b2;        
-            --accent-public-off: #ef5350; 
+            --primary-work: #a7d7c5;
+            --primary-work-dark: #7fb5a1;
+            --accent-off: #ffb7b2;
+            --accent-public-off: #ef5350;
             --accent-off-dark: #e08e89;
-            --accent-leave: #ffb74d;      
+            --accent-leave: #ffb74d;
             --accent-leave-dark: #f57c00;
-            --accent-wish: #b71c1c;       
-            
+            --accent-wish: #b71c1c;
             --status-error-bg: #ffebee;
             --status-error-text: #c62828;
             --status-warn-bg: #fff3e0;
@@ -30,7 +29,6 @@
             --status-ok-text: #2e7d32;
             --status-sync-bg: #e3f2fd;
             --status-sync-text: #1565c0;
-            
             --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
             --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
             --shadow-fab: 0 6px 12px rgba(0,0,0,0.15);
@@ -40,79 +38,164 @@
             font-family: 'Noto Sans JP', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
-            margin: 0; 
+            margin: 0;
             padding: 0;
-            display: flex; justify-content: center; align-items: flex-start;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
             min-height: 100dvh;
             -webkit-tap-highlight-color: transparent;
         }
 
         .app-container {
-            width: 100%; max-width: 600px;
-            background-color: var(--card-bg); 
-            display: flex; flex-direction: column; position: relative;
+            width: 100%;
+            max-width: 600px;
+            background-color: var(--card-bg);
+            display: flex;
+            flex-direction: column;
+            position: relative;
             min-height: 100dvh;
             box-shadow: var(--shadow-md);
         }
 
         /* ヘッダーエリア */
-        .header { 
-            padding: 12px 16px; 
-            background-color: #fff; 
-            display: flex; justify-content: space-between; align-items: center; 
+        .header {
+            padding: 12px 16px;
+            background-color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             border-bottom: 1px solid #f0f0f0;
-            position: sticky; top: 0; z-index: 10;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
-        .title-group { text-align: center; flex-grow: 1; display: flex; flex-direction: column; align-items: center; }
-        
-        .period-label-wrapper { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 2px; }
-        .period-label { font-size: 1.1rem; font-weight: 700; color: var(--primary-work-dark); margin: 0; }
-        
-        .month-title { font-size: 0.8rem; font-weight: 500; color: var(--text-sub); margin: 0; }
-        .nav-btn { background: none; border: none; cursor: pointer; width: 44px; height: 44px; border-radius: 50%; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--text-main); }
-        
+
+        .title-group {
+            text-align: center;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .period-label-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 2px;
+        }
+
+        .period-label {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary-work-dark);
+            margin: 0;
+        }
+
+        .month-title {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-sub);
+            margin: 0;
+        }
+
+        .nav-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: var(--text-main);
+        }
+
         /* 同期ステータス */
-        .sync-status-main { font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; display: inline-block; background-color: #eee; color: #666; margin-top: 4px; font-weight: 700;}
+        .sync-status-main {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            display: inline-block;
+            background-color: #eee;
+            color: #666;
+            margin-top: 4px;
+            font-weight: 700;
+        }
         .sync-status-main.active { background-color: var(--status-sync-bg); color: var(--status-sync-text); }
         .sync-status-main.saved { background-color: var(--status-ok-bg); color: var(--status-ok-text); }
         .sync-status-main.error { background-color: var(--status-error-bg); color: var(--status-error-text); }
 
         /* ツールバー */
-        .toolbar { 
-            display: flex; gap: 8px; padding: 10px 16px; background-color: #fff; 
-            border-bottom: 1px solid #f0f0f0; overflow-x: auto; 
-            scrollbar-width: none; 
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            padding: 10px 16px;
+            background-color: #fff;
+            border-bottom: 1px solid #f0f0f0;
+            overflow-x: auto;
+            scrollbar-width: none;
         }
-        .toolbar::-webkit-scrollbar { display: none; } 
-        .tool-btn { 
-            flex: 0 0 auto; white-space: nowrap; padding: 8px 14px; 
-            border: 1px solid #eee; border-radius: 20px; background-color: #fff; 
-            font-size: 0.8rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.2s; 
+        .toolbar::-webkit-scrollbar { display: none; }
+        .tool-btn {
+            flex: 0 0 auto;
+            white-space: nowrap;
+            padding: 8px 14px;
+            border: 1px solid #eee;
+            border-radius: 20px;
+            background-color: #fff;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            transition: all 0.2s;
         }
-        .tool-btn.active-tool { background-color: #fff3e0; border-color: #ffb74d; color: #f57c00; box-shadow: inset 0 0 0 1px #ffb74d;}
-        
-        .toolbar.locked #noboriBtn, .toolbar.locked #resetAllBtn { opacity: 0.5; pointer-events: none; }
+        .tool-btn.active-tool {
+            background-color: #fff3e0;
+            border-color: #ffb74d;
+            color: #f57c00;
+            box-shadow: inset 0 0 0 1px #ffb74d;
+        }
 
         /* 統計エリア */
-        .stats-bar { 
-            display: flex; justify-content: space-between; align-items: flex-end; 
-            padding: 10px 8px; background-color: #fff; gap: 4px; overflow-x: auto; 
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 10px 8px;
+            background-color: #fff;
+            gap: 4px;
+            overflow-x: auto;
             scrollbar-width: none;
         }
         .stats-bar::-webkit-scrollbar { display: none; }
-        
-        .stat-item { 
-            display: flex; flex-direction: column; align-items: center; 
-            padding: 6px 4px; border-radius: 8px; cursor: pointer; 
-            border: 2px solid transparent; flex: 1; min-width: 45px; background-color: #fff; transition: all 0.2s; 
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 6px 4px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            flex: 1;
+            min-width: 45px;
+            background-color: #fff;
+            transition: all 0.2s;
         }
-        
         .stat-item[data-mode="work"] { border-color: var(--primary-work); }
         .stat-item[data-mode="wish_leave"] { border-color: var(--accent-wish); }
         .stat-item[data-mode="leave"] { border-color: var(--accent-leave); }
         .stat-item[data-mode="off"] { border-color: var(--accent-off); }
         .stat-item[data-mode="public_off"] { border-color: var(--accent-public-off); }
-        
+
         .stat-item[data-mode="work"].active-mode { background-color: #eaf7f2; }
         .stat-item[data-mode="wish_leave"].active-mode { background-color: #fce4e4; }
         .stat-item[data-mode="leave"].active-mode { background-color: #fff8e1; }
@@ -120,9 +203,8 @@
         .stat-item[data-mode="public_off"].active-mode { background-color: #ffebee; border-color: #e57373; }
 
         .stat-item.no-click { cursor: default; border-color: #eee; }
-        .stats-bar.locked .stat-item:not(.no-click) { opacity: 0.5; border-color: transparent; pointer-events: none; }
 
-        .stat-label-count { font-size: 0.6rem; color: var(--text-sub); font-weight: 700; white-space: nowrap; margin-bottom: 2px;}
+        .stat-label-count { font-size: 0.6rem; color: var(--text-sub); font-weight: 700; white-space: nowrap; margin-bottom: 2px; }
         .stat-value { font-size: 1rem; font-weight: 700; line-height: 1; }
         .stat-work { color: var(--primary-work-dark); }
         .stat-wish { color: var(--accent-wish); }
@@ -133,95 +215,167 @@
         /* バリデーション */
         .validation-header { display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 4px 16px; background-color: #fff; }
         .total-days-display { font-weight: 700; color: var(--text-main); font-size: 0.8rem; }
-        .validation-messages { padding: 0 16px 8px 16px; background-color: #fff; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid #f0f0f0;}
-        .error-message { color: var(--status-error-text); background-color: var(--status-error-bg); padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;}
+        .validation-messages { padding: 0 16px 8px 16px; background-color: #fff; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid #f0f0f0; }
+        .error-message { color: var(--status-error-text); background-color: var(--status-error-bg); padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; }
         .warn-message { color: var(--status-warn-text); background-color: var(--status-warn-bg); padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 6px; }
 
         /* カレンダーグリッド */
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 12px 8px 80px 8px; flex-grow: 1; align-content: flex-start; background-color: #f9f9f9;}
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 12px 8px 80px 8px; flex-grow: 1; align-content: flex-start; background-color: #f9f9f9; }
         .weekday { text-align: center; font-size: 0.75rem; color: var(--text-sub); margin-bottom: 4px; font-weight: 700; }
         .weekday:nth-child(1) { color: #d32f2f; }
         .weekday:nth-child(7) { color: #1565c0; }
 
-        .day-cell { aspect-ratio: 1/1; border-radius: 8px; background-color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 4px 2px; cursor: pointer; position: relative; font-weight: 500; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.02);}
-        
-        .day-cell.is-sun, .day-cell.is-holiday { color: #d32f2f !important; }
+        .day-cell {
+            aspect-ratio: 1/1;
+            border-radius: 8px;
+            background-color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 4px 2px;
+            cursor: pointer;
+            position: relative;
+            font-weight: 500;
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+        .day-cell.is-sun, .day-cell.is-holiday { color: #d32f2f; }
         .day-cell.is-sat { color: #1565c0; }
-        .day-cell.outside-month { opacity: 0.3; background-color: #f5f5f5; box-shadow: none;}
-        
+        .day-cell.outside-month { opacity: 0.3; background-color: #f5f5f5; box-shadow: none; }
         .day-cell:active { transform: scale(0.95); transition: transform 0.1s; }
-        
-        .day-cell.status-work { background-color: var(--primary-work); color: #fff; box-shadow: none;}
-        .day-cell.status-leave { background-color: var(--accent-leave); color: #fff; box-shadow: none;}
-        .day-cell.status-off { background-color: var(--accent-off); color: #fff; box-shadow: none;}
-        .day-cell.status-public-off { background-color: var(--accent-public-off); color: #fff; box-shadow: none;}
-        
+
+        .day-cell.status-work { background-color: var(--primary-work); color: #fff !important; box-shadow: none; }
+        .day-cell.status-leave { background-color: var(--accent-leave); color: #fff !important; box-shadow: none; }
+        .day-cell.status-off { background-color: var(--accent-off); color: #fff !important; box-shadow: none; }
+        .day-cell.status-public-off { background-color: var(--accent-public-off); color: #fff !important; box-shadow: none; }
+
         .day-cell.is-holiday, .day-cell.is-sun { font-weight: 700; }
         .day-cell.is-today { border: 2px solid var(--text-sub); }
-
         .day-cell.is-wish-leave { box-shadow: inset 0 0 0 3px var(--accent-wish) !important; }
 
         .day-date { font-size: 0.8rem; font-weight: 700; margin-bottom: 1px; }
 
         .nobori-mark { margin-left: 2px; font-size: 0.6rem; color: #4a4a4a; font-weight: normal; }
-        .day-cell[class*="status-"] .nobori-mark { color: #fff; }
         .day-cell.is-holiday .nobori-mark, .day-cell.is-sun .nobori-mark { color: #d32f2f; }
+        .day-cell[class*="status-"] .nobori-mark { color: #fff !important; }
 
-        .holiday-name { font-size: 0.45rem; line-height: 1.1; margin-top: 1px; text-align: center; color: #d32f2f; font-weight: 400; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        .holiday-name {
+            font-size: 0.45rem;
+            line-height: 1.1;
+            margin-top: 1px;
+            text-align: center;
+            color: #d32f2f;
+            font-weight: 400;
+            width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .day-cell[class*="status-"] .holiday-name { color: #fff !important; }
         .status-label { font-size: 0.6rem; font-weight: 700; margin-top: 1px; }
-        
         .note-indicator { font-size: 0.75rem; margin-top: 1px; }
 
-        .warning-icon { position: absolute; bottom: 2px; right: 2px; font-size: 0.8rem; color: #ff9800; text-shadow: 0 1px 2px rgba(0,0,0,0.2); animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0.8; } }
-
-        /* フローティング編集スイッチ */
-        .floating-edit-switch {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            z-index: 900;
-            background-color: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(4px);
-            border-radius: 30px;
-            box-shadow: var(--shadow-fab);
-            padding: 4px;
-            display: flex;
-            border: 1px solid #e0e0e0;
+        .warning-icon {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            font-size: 0.8rem;
+            color: #ff9800;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            animation: pulse 2s infinite;
         }
-        .fab-btn {
-            padding: 10px 16px; border-radius: 20px; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s; color: #888; background: transparent; display: flex; align-items: center; gap: 4px;
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; transform: scale(1.1); }
+            100% { opacity: 0.8; }
         }
-        .fab-btn.active { background-color: var(--primary-work-dark); color: #fff; box-shadow: var(--shadow-sm); }
-        .fab-btn.active-lock { background-color: #e0e0e0; color: #555; }
 
         /* モーダル共通 */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: flex-end; z-index: 1000; }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: flex-end;
+            z-index: 1000;
+        }
         .modal-overlay.active { display: flex; }
-        .modal-content { 
-            background: #fff; padding: 24px 20px 40px 20px; 
-            border-radius: 20px 20px 0 0; width: 100%; max-width: 600px; 
-            max-height: 90vh; overflow-y: auto;
+        .modal-content {
+            background: #fff;
+            padding: 24px 20px 40px 20px;
+            border-radius: 20px 20px 0 0;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
             animation: slideUp 0.3s ease-out;
             box-sizing: border-box;
         }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         
-        .modal-textarea { width: 100%; height: 100px; padding: 12px; margin: 12px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; resize: vertical; font-family: inherit; }
-        .modal-input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; background-color: #fafafa;}
-        
-        .modal-btn { padding: 12px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; gap: 6px;}
+        .modal-textarea {
+            width: 100%;
+            height: 100px;
+            padding: 12px;
+            margin: 12px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1rem;
+            resize: vertical;
+            font-family: inherit;
+        }
+        .modal-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1rem;
+            background-color: #fafafa;
+        }
+        .modal-btn {
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
         .modal-btn.cancel { background-color: #f0f0f0; color: #666; }
-        .modal-btn.save { background-color: var(--primary-work-dark); color: #fff; flex: 1;}
-        .modal-btn.danger { background-color: #ffebee; color: #d32f2f; border: 1px solid #ffcdd2;}
+        .modal-btn.save { background-color: var(--primary-work-dark); color: #fff; flex: 1; }
+        .modal-btn.danger { background-color: #ffebee; color: #d32f2f; border: 1px solid #ffcdd2; }
 
         .settings-section { margin-bottom: 20px; }
-        .settings-section h4 { margin: 0 0 10px 0; font-size: 0.9rem; color: var(--primary-work-dark); display: flex; align-items: center; gap: 6px;}
-        .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px;}
-        .settings-label { font-size: 0.85rem; font-weight: 700; color: var(--text-main); flex-shrink: 0; min-width: 80px;}
+        .settings-section h4 { margin: 0 0 10px 0; font-size: 0.9rem; color: var(--primary-work-dark); display: flex; align-items: center; gap: 6px; }
+        .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+        .settings-label { font-size: 0.85rem; font-weight: 700; color: var(--text-main); flex-shrink: 0; min-width: 80px; }
 
-        #copyStatusMsg { background-color: rgba(46, 125, 50, 0.9); color: white; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 2000; padding: 12px 24px; border-radius: 30px; display: none; box-shadow: var(--shadow-md); font-weight: 700; font-size: 0.9rem;}
-        
+        #copyStatusMsg {
+            background-color: rgba(46, 125, 50, 0.9);
+            color: white;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2000;
+            padding: 12px 24px;
+            border-radius: 30px;
+            display: none;
+            box-shadow: var(--shadow-md);
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
         /* 管理者テーブル用スタイル */
         #adminTable th, #adminTable td {
             border: 1px solid #ddd;
@@ -269,7 +423,7 @@
         </div>
 
         <!-- ツールバー -->
-        <div class="toolbar locked" id="mainToolbar">
+        <div class="toolbar" id="mainToolbar">
             <button class="tool-btn" id="noboriBtn">🚚 拠点積</button>
             <button class="tool-btn" id="memoModeBtn">📝 予定</button>
             <button class="tool-btn" id="copyTextBtn">📋 休暇申請</button>
@@ -277,7 +431,7 @@
         </div>
 
         <!-- 統計エリア -->
-        <div class="stats-bar locked" id="mainStatsBar">
+        <div class="stats-bar" id="mainStatsBar">
             <div class="stat-item no-click" style="cursor: default;">
                 <span class="stat-label-count">所定</span>
                 <span class="stat-value" id="requiredDaysDisplay">-</span>
@@ -312,12 +466,6 @@
 
         <!-- カレンダー -->
         <div class="calendar-grid" id="calendarGrid"></div>
-        
-        <!-- フローティング ロック/編集 スイッチ -->
-        <div class="floating-edit-switch" id="floatingEditSwitch">
-            <button class="fab-btn active-lock" id="lockBtn">🔒 閲覧</button>
-            <button class="fab-btn" id="editBtn">✏️ 編集</button>
-        </div>
     </div>
 
     <!-- メモ用モーダル -->
@@ -535,7 +683,6 @@
 
         const appId = 'ka-shift-manager-v1';
         let db, auth, user, unsubscribeDoc = null, isCloudActive = false, saveTimeout = null, confirmCallback = null, currentMemoKey = null;
-        let autoLockTimer = null;
 
         function safeParse(key, defaultValue) {
             try {
@@ -557,7 +704,7 @@
             wishLeaves: safeParse('wishLeavesData', {}), 
             settings: safeParse('settingsData', { email1: '', email2: '', senderName: '', leaveDays: 0, leaveBaseMonth: 4, leaveBaseDay: 1 }), 
             selectedMode: null,
-            isLocked: true 
+            isLocked: false 
         };
 
         function formatDateKey(d) { return `${d.getFullYear()}-${('0'+(d.getMonth()+1)).slice(-2)}-${('0'+d.getDate()).slice(-2)}`; }
@@ -571,8 +718,8 @@
             alertModal.classList.add('active');
         }
         
-        document.getElementById('alertOkBtn').addEventListener('click', () => {
-             document.getElementById('alertModal').classList.remove('active');
+        document.getElementById('alertOkBtn').addEventListener('click', () => { 
+            document.getElementById('alertModal').classList.remove('active');
         });
 
         function updateSyncStatus(text, statusClass) {
@@ -617,19 +764,6 @@
             const el = document.getElementById(id);
             if (el) el.addEventListener(event, handler);
         };
-
-        function resetAutoLockTimer() {
-            clearTimeout(autoLockTimer);
-            if (!state.isLocked) {
-                autoLockTimer = setTimeout(() => {
-                    state.isLocked = true;
-                    if (state.selectedMode !== 'memo') {
-                        state.selectedMode = null;
-                    }
-                    render();
-                }, 10 * 60 * 1000); 
-            }
-        }
 
         safeAddEventListener('registerBtn', 'click', async () => {
             const sid = document.getElementById('shareIdInput').value.trim();
@@ -699,7 +833,7 @@
                     updateSyncStatus("エラー", "error");
                 } else {
                     const data = docSnap.data();
-                    const serverPwd = data.password || ""; 
+                    const serverPwd = data.password || "";
                     
                     if (serverPwd !== pwd) {
                         showAlert("パスワードが間違っています。");
@@ -884,18 +1018,18 @@
                         }
                     }
                 }
-                if (currentStatus === 'work' && !hasMarker) {
-                     const prev = new Date(loop); prev.setDate(loop.getDate() - 1);
-                     const prev2 = new Date(loop); prev2.setDate(loop.getDate() - 2);
-                     const pk = formatDateKey(prev), pk2 = formatDateKey(prev2);
-                     if (state.attendance[pk] === 'work' && !state.markers[pk] && state.attendance[pk2] === 'work' && !state.markers[pk2]) {
-                         alerts.push({ msg: `${loop.getDate()}日 出勤？(3連)` });
-                     }
+                if (currentStatus === 'work' && !hasMarker) { 
+                    const prev = new Date(loop); prev.setDate(loop.getDate() - 1); 
+                    const prev2 = new Date(loop); prev2.setDate(loop.getDate() - 2); 
+                    const pk = formatDateKey(prev), pk2 = formatDateKey(prev2); 
+                    if (state.attendance[pk] === 'work' && !state.markers[pk] && state.attendance[pk2] === 'work' && !state.markers[pk2]) { 
+                        alerts.push({ msg: `${loop.getDate()}日 出勤？(3連)` }); 
+                    }
                 }
                 if (currentStatus !== 'work') {
                     const next = new Date(loop); next.setDate(loop.getDate() + 1);
-                    if (!state.attendance[formatDateKey(next)] && checkIsLoading(loop)) {
-                         alerts.push({ msg: `${loop.getDate()}日 確認` });
+                    if (!state.attendance[formatDateKey(next)] && checkIsLoading(loop)) { 
+                        alerts.push({ msg: `${loop.getDate()}日 確認` });
                     }
                 }
                 loop.setDate(loop.getDate()+1);
@@ -920,19 +1054,19 @@
             let loop = new Date(start);
             while(loop <= end) {
                 const k = formatDateKey(loop);
-                if (state.attendance[k] === 'work' && !state.markers[k]) {
-                     const next = new Date(loop); next.setDate(loop.getDate() + 1);
-                     if (!(state.attendance[formatDateKey(next)] === 'work' && !state.markers[formatDateKey(next)])) {
-                         const prev = new Date(loop); prev.setDate(loop.getDate() - 1);
-                         const prevK = formatDateKey(prev);
-                         if (state.attendance[prevK] && state.attendance[prevK] !== 'work') warnings.add(prevK);
-                     }
+                if (state.attendance[k] === 'work' && !state.markers[k]) { 
+                    const next = new Date(loop); next.setDate(loop.getDate() + 1); 
+                    if (!(state.attendance[formatDateKey(next)] === 'work' && !state.markers[formatDateKey(next)])) { 
+                        const prev = new Date(loop); prev.setDate(loop.getDate() - 1); 
+                        const prevK = formatDateKey(prev); 
+                        if (state.attendance[prevK] && state.attendance[prevK] !== 'work') warnings.add(prevK); 
+                    }
                 }
-                if (state.attendance[k] === 'work' && !state.markers[k]) {
-                     const prev = new Date(loop); prev.setDate(loop.getDate() - 1);
-                     const prev2 = new Date(loop); prev2.setDate(loop.getDate() - 2);
-                     const pk = formatDateKey(prev), pk2 = formatDateKey(prev2);
-                     if (state.attendance[pk] === 'work' && !state.markers[pk] && state.attendance[pk2] === 'work' && !state.markers[pk2]) warnings.add(k);
+                if (state.attendance[k] === 'work' && !state.markers[k]) { 
+                    const prev = new Date(loop); prev.setDate(loop.getDate() - 1); 
+                    const prev2 = new Date(loop); prev2.setDate(loop.getDate() - 2); 
+                    const pk = formatDateKey(prev), pk2 = formatDateKey(prev2); 
+                    if (state.attendance[pk] === 'work' && !state.markers[pk] && state.attendance[pk2] === 'work' && !state.markers[pk2]) warnings.add(k);
                 }
                 if (state.attendance[k] !== 'work') {
                     const next = new Date(loop); next.setDate(loop.getDate() + 1);
@@ -944,7 +1078,6 @@
         }
 
         function render() {
-            updateLockStateUI();
             const grid = document.getElementById('calendarGrid'); grid.innerHTML = '';
             const start = new Date(state.currentStartDate), end = new Date(start.getFullYear(), start.getMonth()+1, 15);
             
@@ -1052,6 +1185,7 @@
 
         function createDayCell(dateObj, holMap, isOutside, counts = null, todayKey = null, warningDates = new Set()) {
             const k = formatDateKey(dateObj);
+            const cellDay = dateObj.getDay();
             const s = state.attendance[k];
             const hol = holMap[k];
             const n = state.notes[k];
@@ -1061,7 +1195,6 @@
             const cell = document.createElement('div'); 
             cell.className = 'day-cell';
             if (isOutside) cell.classList.add('outside-month');
-            if (state.isLocked) cell.classList.add('locked'); 
             
             if (wl) cell.classList.add('is-wish-leave');
 
@@ -1075,8 +1208,8 @@
             cell.appendChild(dWrap);
             
             if (hol) cell.classList.add('is-holiday'); 
-            else if (dateObj.getDay()===0) cell.classList.add('is-sun'); 
-            else if (dateObj.getDay()===6) cell.classList.add('is-sat');
+            else if (cellDay===0) cell.classList.add('is-sun'); 
+            else if (cellDay===6) cell.classList.add('is-sat');
 
             if (hol) { const hName = document.createElement('span'); hName.className = 'holiday-name'; hName.textContent = hol; cell.appendChild(hName); }
             if (s==='leave') { const l=document.createElement('span'); l.className='status-label'; l.textContent='有休'; cell.appendChild(l); }
@@ -1105,14 +1238,6 @@
             }
 
             cell.onclick = () => { 
-                if (state.isLocked) {
-                    if (state.selectedMode === 'memo') {
-                        openMemoModal(k, true);
-                    }
-                    return;
-                }
-                
-                resetAutoLockTimer(); 
                 if (!state.selectedMode) return; 
 
                 if (state.selectedMode === 'memo') {
@@ -1126,14 +1251,15 @@
                     else state.markers[k] = true;
                     save(true); render();
                 } else if (!isOutside) {
-                    if (state.selectedMode) {
-                        if (state.attendance[k] === state.selectedMode) delete state.attendance[k];
-                        else state.attendance[k] = state.selectedMode;
+                    if (state.attendance[k] === state.selectedMode) {
+                        // 現在と同じステータスをタップした場合、未入力(白色)にするのではなく、初期状態（平日=出勤、土日祝=休み）に戻す
+                        if (cellDay === 0 || cellDay === 6 || holMap[k]) {
+                            state.attendance[k] = 'off'; // 土日祝・休日は「休み」
+                        } else {
+                            state.attendance[k] = 'work'; // 平日は「出勤」
+                        }
                     } else {
-                        const cycle = [null, 'work', 'leave', 'off', 'public_off'];
-                        const curIdx = cycle.indexOf(state.attendance[k] || null);
-                        const nextStatus = cycle[(curIdx + 1) % cycle.length];
-                        if (nextStatus) state.attendance[k] = nextStatus; else delete state.attendance[k];
+                        state.attendance[k] = state.selectedMode;
                     }
                     save(true); render();
                 }
@@ -1142,45 +1268,6 @@
             document.getElementById('calendarGrid').appendChild(cell);
         }
 
-        function updateLockStateUI() {
-            const lockBtn = document.getElementById('lockBtn');
-            const editBtn = document.getElementById('editBtn');
-            const toolbar = document.getElementById('mainToolbar');
-            const statsBar = document.getElementById('mainStatsBar');
-
-            if (state.isLocked) {
-                if (lockBtn) lockBtn.classList.add('active-lock');
-                if (editBtn) editBtn.classList.remove('active');
-                if (toolbar) toolbar.classList.add('locked');
-                if (statsBar) statsBar.classList.add('locked');
-            } else {
-                if (lockBtn) lockBtn.classList.remove('active-lock');
-                if (editBtn) editBtn.classList.add('active');
-                if (toolbar) toolbar.classList.remove('locked');
-                if (statsBar) statsBar.classList.remove('locked');
-            }
-        }
-
-        safeAddEventListener('lockBtn', 'click', () => { 
-            state.isLocked = true; 
-            if (state.selectedMode !== 'memo') {
-                state.selectedMode = null; 
-            }
-            clearTimeout(autoLockTimer);
-            render(); 
-        });
-        
-        safeAddEventListener('editBtn', 'click', () => { 
-            state.isLocked = false; 
-            render(); 
-            resetAutoLockTimer();
-        });
-
-        safeAddEventListener('prevBtn', 'click', () => { state.currentStartDate.setMonth(state.currentStartDate.getMonth()-1); render(); });
-        safeAddEventListener('nextBtn', 'click', () => { state.currentStartDate.setMonth(state.currentStartDate.getMonth()+1); render(); });
-        
-        safeAddEventListener('titleGroup', 'click', () => { initDate(); render(); });
-        
         const monthSelect = document.getElementById('leaveBaseMonthInput');
         if (monthSelect) {
             for(let i=1; i<=12; i++) {
@@ -1225,7 +1312,6 @@
         if (adminYearSelect) adminYearSelect.onchange = renderAdminRequiredDaysForm;
 
         safeAddEventListener('settingsBtn', 'click', () => {
-            resetAutoLockTimer();
             document.getElementById('senderNameInput').value = state.settings.senderName || '';
             document.getElementById('email1Input').value = state.settings.email1 || '';
             document.getElementById('email2Input').value = state.settings.email2 || '';
@@ -1258,7 +1344,6 @@
         });
 
         safeAddEventListener('resetAllBtn', 'click', () => {
-            resetAutoLockTimer();
             const endMonth = state.currentStartDate.getMonth() + 2 > 12 ? (state.currentStartDate.getMonth() + 2) - 12 : state.currentStartDate.getMonth() + 2;
             
             const confirmMsg = document.getElementById('confirmMessage');
@@ -1571,8 +1656,6 @@
 
         safeAddEventListener('copyTextBtn', 'click', (e) => { 
             e.preventDefault(); 
-            if (state.isLocked) return;
-            resetAutoLockTimer();
 
             const s = new Date(state.currentStartDate);
             const end = new Date(s.getFullYear(), s.getMonth()+1, 15);
@@ -1682,10 +1765,6 @@
                 el.onclick = () => { state.selectedMode = (state.selectedMode === val) ? null : val; render(); }; 
             }
         });
-
-        ['mousedown', 'touchstart', 'keydown'].forEach(evt => document.addEventListener(evt, () => {
-            if (typeof resetAutoLockTimer === 'function') resetAutoLockTimer();
-        }));
 
         initDate(); render(); initFirebase(); 
     </script>
